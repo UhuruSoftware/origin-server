@@ -1346,7 +1346,7 @@ class Application
     old_features = self.requires + [comp_inst.cartridge_name] #[get_feature(comp_inst.cartridge_name, comp_inst.component_name)]
     old_connections, ignore, ignore = elaborate(old_features)
     sub_pub_hash = {}
-    if self.scalable and old_connections
+    if (self.scalable || self.is_windows_app) and old_connections
       old_connections.each do |old_conn|
         if (old_conn["from_comp_inst"]["cart"] == comp_inst.cartridge_name) and
            (old_conn["from_comp_inst"]["comp"] == comp_inst.component_name)
@@ -1359,7 +1359,7 @@ class Application
   end
 
   def execute_connections
-    if self.scalable
+    if (self.scalable || self.is_windows_app)
       connections, new_group_instances, cleaned_group_overrides = elaborate(self.requires, self.group_overrides)
       set_connections(connections)
 
@@ -1629,8 +1629,16 @@ class Application
     end
   end
 
+  def is_windows_app
+    has_windows_component = self.component_instances.any? do |component_instance|
+      component_instance.get_cartridge.categories.include?('windows')
+    end
+
+    has_windows_component
+  end
+
   def update_requirements(features, group_overrides, init_git_url=nil, user_env_vars=nil)
-    group_overrides = (group_overrides + gen_non_scalable_app_overrides(features)).uniq unless self.scalable
+    group_overrides = (group_overrides + gen_non_scalable_app_overrides(features)).uniq unless (self.scalable || self.is_windows_app)
 
     connections, new_group_instances, cleaned_group_overrides = elaborate(features, group_overrides)
     current_group_instances = self.group_instances.map { |gi| gi.to_hash }
@@ -2017,7 +2025,7 @@ class Application
           app_name: self.name, gear_id: gear_id, event: UsageRecord::EVENTS[:begin], cart_name: comp_spec["cart"],
           usage_type: UsageRecord::USAGE_TYPES[:premium_cart], prereq: usage_op_prereq)) if cartridge.is_premium?
 
-       if self.scalable
+       if (self.scalable || self.is_windows_app)
         op = ExposePortOp.new(group_instance_id: group_instance_id, gear_id: gear_id, comp_spec: comp_spec, prereq: usage_op_prereq + [prereq_id])
         component_ops[comp_spec][:expose_ports].push op
         ops.push op
@@ -2100,7 +2108,14 @@ class Application
       additional_filesystem_gb = change[:to_scale][:additional_filesystem_gb] || 0
       add_gears   += ginst_scale if ginst_scale > 0
 
-      ginst_op = CreateGroupInstanceOp.new(group_instance_id: ginst_id)
+      is_windows_group = change[:added].any? do |comp_spec|
+        cats = CartridgeCache.find_cartridge(comp_spec["cart"], self).categories
+        cats.include?("windows")
+      end
+
+      kernel = is_windows_group ? 'Windows' : 'Linux'
+
+      ginst_op = CreateGroupInstanceOp.new({group_instance_id: ginst_id, kernel: kernel})
       ginst_op.prereq << set_group_override_op._id.to_s unless set_group_override_op.nil?
       pending_ops.push(ginst_op)
       gear_ids = (1..ginst_scale).map {|idx| Moped::BSON::ObjectId.new.to_s}

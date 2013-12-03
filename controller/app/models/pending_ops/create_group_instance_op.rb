@@ -1,9 +1,10 @@
 class CreateGroupInstanceOp < PendingAppOp
 
   field :group_instance_id, type: String
+  field :kernel, type: String
 
   def execute
-    pending_app_op_group.application.group_instances.push(GroupInstance.new(custom_id: group_instance_id))
+    pending_app_op_group.application.group_instances.push(GroupInstance.new({custom_id: group_instance_id, custom_kernel: kernel}))
   end
   
   def rollback

@@ -18,6 +18,8 @@ class GroupInstance
   embedded_in :application, class_name: Application.name
   embeds_many :gears, class_name: Gear.name
 
+  field :kernel, type: String, default: "Linux"
+
   attr_accessor :min, :max
 
   # Initializes the application
@@ -30,9 +32,15 @@ class GroupInstance
   #   @Note used when this gear is hosting the web_proxy component
   def initialize(attrs = nil, options = nil)
     custom_id = attrs[:custom_id]
+    custom_kernel = attrs[:custom_kernel]
+
     attrs.delete(:custom_id)
+    attrs.delete(:custom_kernel)
+
     super(attrs, options)
+
     self._id = custom_id unless custom_id.nil?
+    self.kernel = custom_kernel unless custom_kernel.nil?
   end
 
   def component_instances

@@ -74,13 +74,7 @@ class Gear
   def reserve_uid(gear_size = nil)
     gear_size = group_instance.gear_size unless gear_size
 
-    has_windows_component = group_instance.application.component_instances.any? do |component_instance|
-      component_instance.get_cartridge.categories.include?('windows')
-    end
-
-    kernel = has_windows_component ? 'Windows' : 'Linux'
-
-    @container = OpenShift::ApplicationContainerProxy.find_available(gear_size, nil, server_identities, kernel)
+    @container = OpenShift::ApplicationContainerProxy.find_available(gear_size, nil, server_identities, group_instance.kernel)
     reserved_gear_uid = @container.reserve_uid
 
     failure_message = "Failed to set UID and server_identity for gear #{self.uuid} for application #{self.group_instance.application.name}"
