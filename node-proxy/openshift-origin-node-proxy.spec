@@ -11,7 +11,7 @@
 
 Summary:       Routing proxy for OpenShift Origin Node
 Name:          openshift-origin-node-proxy
-Version: 1.16.3
+Version: 1.17.2
 Release:       1%{?dist}
 Group:         Network/Daemons
 License:       ASL 2.0
@@ -30,6 +30,8 @@ BuildRequires: systemd-units
 %if 0%{?fedora}%{?rhel} <= 6
 BuildRequires: nodejs010-build
 BuildRequires: scl-utils-build
+%else
+BuildRequires: nodejs-devel
 %endif
 
 BuildArch:     noarch
@@ -44,7 +46,6 @@ traffic) for an OpenShift Origin node.
 %build
 
 %install
-%{?scl:scl enable %scl - << \EOF}
 #  Runtime directories.
 mkdir -p %{buildroot}%{_var}/lock/subsys
 mkdir -p %{buildroot}%{_var}/run
@@ -136,6 +137,19 @@ fi
 %doc README
 
 %changelog
+* Thu Dec 12 2013 Adam Miller <admiller@redhat.com> 1.17.2-1
+- the nodejs rpm macros are in nodejs-devel for fedora, need to require it when
+  not building SCL (admiller@redhat.com)
+
+* Wed Dec 04 2013 Adam Miller <admiller@redhat.com> 1.17.1-1
+- Bug 1034077: Fix for backend connection not opened. (mrunalp@gmail.com)
+- Merge pull request #4234 from maxamillion/admiller/fix_node-proxy_build
+  (dmcphers+openshiftbot@redhat.com)
+- remove unnecessary scl enable, we handle all scl paths in global macros
+  (admiller@redhat.com)
+- check for headers and host header bz#103064 (vbatts@redhat.com)
+- bump_minor_versions for sprint 37 (admiller@redhat.com)
+
 * Fri Nov 08 2013 Adam Miller <admiller@redhat.com> 1.16.3-1
 - <node-proxy> Spec file updates to make brew happy (jdetiber@redhat.com)
 

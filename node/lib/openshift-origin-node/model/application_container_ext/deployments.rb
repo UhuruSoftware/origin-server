@@ -206,6 +206,7 @@ module OpenShift
           target = PathUtils.join('..', deployment_datetime)
           link = PathUtils.join(@container_dir, 'app-deployments', 'by-id', deployment_id)
           FileUtils.ln_s(target, link)
+          PathUtils.oo_lchown(uid, gid, link)
         end
 
         def unlink_deployment_id(deployment_id)
@@ -436,8 +437,25 @@ module OpenShift
                                                   out: $stderr,
                                                   err: $stderr,
                                                   env: env,
-                                                  chdir: destination,
-                                                  expected_exitstatus: 0)
+                                                  chdir: destination)
+
+          unless rc == 0
+            raise OpenShift::Runtime::Utils::ShellExecutionException.new(
+              "Unable to extract deployment archive using command: #{extract_command}", rc, out, err)
+          end
+        end
+
+        ##
+        # Returns the git ref to use when deploying. The ref will be whichever is not empty, in this order:
+        #
+        # +input+
+        # $OPENSHIFT_DEPLOYMENT_BRANCH
+        # 'master'
+        def determine_deployment_ref(gear_env, input=nil)
+          ref = input
+          ref = gear_env['OPENSHIFT_DEPLOYMENT_BRANCH'] if ref.nil? or ref.empty?
+          ref = 'master' if ref.nil? or ref.empty?
+          ref
         end
       end
     end

@@ -1,7 +1,7 @@
 ---
 Name: jbosseap
 Cartridge-Short-Name: JBOSSEAP
-Display-Name: JBoss Enterprise Application Platform 6.1.0
+Display-Name: JBoss Enterprise Application Platform 6
 Description: Market-leading open source enterprise platform for next-generation, highly
   transactional enterprise Java applications. Build and deploy enterprise Java in
   the cloud.
@@ -9,7 +9,9 @@ Version: '6'
 License: LGPL
 License-Url: http://www.gnu.org/copyleft/lesser.txt
 Vendor: Red Hat
-Cartridge-Version: 0.0.8
+Cartridge-Version: 0.0.9
+Compatible-Versions:
+- 0.0.8
 Cartridge-Vendor: redhat
 Categories:
 - service

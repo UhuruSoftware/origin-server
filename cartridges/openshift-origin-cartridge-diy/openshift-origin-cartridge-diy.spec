@@ -2,7 +2,7 @@
 
 Summary:       DIY cartridge
 Name:          openshift-origin-cartridge-diy
-Version: 1.16.1
+Version: 1.17.1
 Release:       1%{?dist}
 Group:         Development/Languages
 License:       ASL 2.0
@@ -38,6 +38,19 @@ DIY cartridge for openshift. (Cartridge Format V2)
 %doc %{cartridgedir}/LICENSE
 
 %changelog
+* Thu Dec 12 2013 Adam Miller <admiller@redhat.com> 1.17.1-1
+- bump_minor_versions for sprint 38 (admiller@redhat.com)
+
+* Fri Dec 06 2013 Troy Dawson <tdawson@redhat.com> 1.16.3-1
+- Bump up cartridge versions. (mrunalp@gmail.com)
+
+* Wed Dec 04 2013 Adam Miller <admiller@redhat.com> 1.16.2-1
+- Fix for bug 1034596 remove links that point to openshift.redhat.com
+  (sgoodwin@redhat.com)
+- Remove Open Sans since we're not including it externally,     make font stack
+  consistent with our site,     set line-height (sgoodwin@redhat.com)
+- Revisions to new app welcome pages. (sgoodwin@redhat.com)
+
 * Thu Nov 07 2013 Adam Miller <admiller@redhat.com> 1.16.1-1
 - bump_minor_versions for sprint 36 (admiller@redhat.com)
 

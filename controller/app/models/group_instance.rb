@@ -16,7 +16,6 @@
 class GroupInstance
   include Mongoid::Document
   embedded_in :application, class_name: Application.name
-  embeds_many :gears, class_name: Gear.name
 
   field :kernel, type: String, default: "Linux"
 
@@ -43,6 +42,10 @@ class GroupInstance
     self.kernel = custom_kernel unless custom_kernel.nil?
   end
 
+  def gears
+    application.gears.select {|g| g.group_instance_id == self._id}
+  end
+
   def component_instances
     all_component_instances.select{|c| !c.is_sparse?}
   end
@@ -53,14 +56,6 @@ class GroupInstance
 
   def all_component_instances
     application.component_instances.where(group_instance_id: self._id)
-  end
-
-  def get_gears(component_instance=nil)
-    if component_instance.nil? or not component_instance.is_sparse?
-      return gears
-    else
-      return gears.select { |g| g.sparse_carts.include? component_instance._id or g.host_singletons }
-    end
   end
 
   def gear_size
@@ -81,6 +76,19 @@ class GroupInstance
 
   def addtl_fs_gb=(value)
     set_group_override("additional_filesystem_gb", value)
+  end
+
+  def server_identities
+    identities = self.gears.map{|gear| gear.server_identity}
+    identities.uniq!
+    identities
+  end
+
+  def has_component?(comp_spec)
+    all_component_instances.each do |ci|
+      return true if ci.component_name == comp_spec["comp"] and ci.cartridge_name == comp_spec["cart"]
+    end
+    return false
   end
 
   # Adds ssh keys to all gears within the group instance.

@@ -222,6 +222,11 @@ Dir(after)    #{@container.uuid}/#{@container.uid} => #{list_home_dir(@container
           proxy.delete_all(proxy_mappings.map{|p| p[:proxy_port]}, true)
         end
 
+        def delete_public_endpoint(public_port)
+          proxy = ::OpenShift::Runtime::FrontendProxyServer.new
+          proxy.system_proxy_delete(public_port)
+        end
+
         # Public: Initialize OpenShift Port Proxy for this gear
         #
         # The port proxy range is determined by configuration and must
@@ -276,15 +281,24 @@ Dir(after)    #{@container.uuid}/#{@container.uid} => #{list_home_dir(@container
 
         # Returns true if the given IP and port are currently bound
         # according to lsof, otherwise false.
-        def address_bound?(ip, port, hourglass)
-          _, _, rc = Utils.oo_spawn("/usr/sbin/lsof -i @#{ip}:#{port}", timeout: hourglass.remaining)
+        def address_bound?(ip, port, hourglass, ignoreClosed=false)
+          if ignoreClosed
+            _, _, rc = Utils.oo_spawn("/usr/sbin/lsof -sTCP:^CLOSE_WAIT,^FIN_WAIT1,^FIN_WAIT2 -i @#{ip}:#{port}", timeout: hourglass.remaining)
+          else
+            _, _, rc = Utils.oo_spawn("/usr/sbin/lsof -i @#{ip}:#{port}", timeout: hourglass.remaining)
+          end
           rc == 0
         end
 
-        def addresses_bound?(addresses, hourglass)
+        def addresses_bound?(addresses, hourglass, ignoreClosed=false)
           command = "/usr/sbin/lsof"
           addresses.each do |addr|
-            command << " -i @#{addr[:ip]}:#{addr[:port]}"
+            if ignoreClosed
+              command << " -sTCP:^CLOSE_WAIT,^FIN_WAIT1,^FIN_WAIT2 -i @#{addr[:ip]}:#{addr[:port]}"
+            else
+              command << " -i @#{addr[:ip]}:#{addr[:port]}"
+            end
+            
           end
 
           _, _, rc = Utils.oo_spawn(command, timeout: hourglass.remaining)

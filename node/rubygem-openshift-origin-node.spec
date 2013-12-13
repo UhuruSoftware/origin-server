@@ -12,7 +12,7 @@
 
 Summary:       Cloud Development Node
 Name:          rubygem-%{gem_name}
-Version: 1.17.4
+Version: 1.19.1
 Release:       1%{?dist}
 Group:         Development/Languages
 License:       ASL 2.0
@@ -108,6 +108,7 @@ cp -a ./%{gem_dir}/* %{buildroot}%{gem_dir}/
 mkdir -p %{buildroot}/usr/bin
 mkdir -p %{buildroot}/usr/sbin
 mkdir -p %{buildroot}%{appdir}/.tc_user_dir
+mkdir -p %{buildroot}%{_var}/log/openshift/node
 
 # Move the gem configs to the standard filesystem location
 mkdir -p %{buildroot}/etc/openshift
@@ -217,8 +218,7 @@ fi
 %{gem_spec}
 %attr(0750,-,-) /usr/sbin/*
 %attr(0755,-,-) /usr/bin/*
-%attr(0640,-,-) %ghost %{_var}/log/openshift/node/platform.log
-%attr(0640,-,-) %ghost %{_var}/log/openshift/node/platform-trace.log
+%attr(0750,-,-) %{_var}/log/openshift/node
 /usr/libexec/openshift/lib/quota_attrs.sh
 /usr/libexec/openshift/lib/archive_git_submodules.sh
 %attr(0755,-,-) %{openshift_lib}/cartridge_sdk
@@ -266,6 +266,69 @@ fi
 %attr(0755,-,-) /etc/cron.daily/openshift-origin-stale-lockfiles
 
 %changelog
+* Thu Dec 12 2013 Adam Miller <admiller@redhat.com> 1.19.1-1
+- bump_minor_versions for sprint 38 (admiller@redhat.com)
+- Merge pull request #4288 from jhadvig/restore
+  (dmcphers+openshiftbot@redhat.com)
+- Merge pull request #4303 from detiber/bz1035176
+  (dmcphers+openshiftbot@redhat.com)
+- Bug 1038129 - Gear is not started after restore when hot_deploy marker is
+  present (jhadvig@redhat.com)
+- Bug 1017536 - Duplication warning messages when creating scalable app with
+  empty git repo (jhadvig@redhat.com)
+- Use app config instead of env vars (andy.goldstein@gmail.com)
+- Bug 1035176 - openshift-iptables-port-proxy start causes duplicate rules
+  (jdetiber@redhat.com)
+- Use app config instead of env vars (andy.goldstein@gmail.com)
+
+* Fri Dec 06 2013 Troy Dawson <tdawson@redhat.com> 1.18.2-1
+- Prune from child gear app-deployments dir (andy.goldstein@gmail.com)
+
+* Wed Dec 04 2013 Adam Miller <admiller@redhat.com> 1.18.1-1
+- Merge pull request #4280 from pmorie/dev/fix-tests
+  (dmcphers+openshiftbot@redhat.com)
+- Fix binary deploy functional test on origin (pmorie@gmail.com)
+- Increase inode quotas to 80k per GB (andy.goldstein@gmail.com)
+- Bug 1036006 - oo-admin-ctl-gears *startall commands fail (jhonce@redhat.com)
+- Security - add OPENSHIFT_UMASK to oo-trap-user for - BZ990441
+  (tkramer@redhat.com)
+- Merge pull request #4019 from markllama/bugs/BZ1024102
+  (dmcphers+openshiftbot@redhat.com)
+- Fix upgrade tests (pmorie@gmail.com)
+- allow oo-trap-user to run from non-public-key auth (markllama@gmail.com)
+- Merge pull request #4230 from bparees/mysql_port_in_use
+  (dmcphers+openshiftbot@redhat.com)
+- Merge pull request #4224 from mmahut/ownlogdir
+  (dmcphers+openshiftbot@redhat.com)
+- bug 985784: Unable to add database cartridge to apps again after removing it
+  due to TCP connection stays in CLOSE_WAIT status (bparees@redhat.com)
+- Merge pull request #4226 from ncdc/bz1033572-default-git-ref
+  (dmcphers+openshiftbot@redhat.com)
+- Bug 1033572 (andy.goldstein@gmail.com)
+- Bug 1032906: Fix generic error handling in Openshift agent
+  (ironcladlou@gmail.com)
+- node: we do not want %%ghost-ed log files (mmahut@redhat.com)
+- node: make sure to own the /var/log/openshift/node directory in rpm
+  (mmahut@redhat.com)
+- Merge pull request #4214 from ncdc/bz1032950-lchown-by-id-link
+  (dmcphers+openshiftbot@redhat.com)
+- Bug 1032950 (andy.goldstein@gmail.com)
+- Fix viminfo file error when using vim within gears (jhadvig@redhat.com)
+- Up tries on http assertions in functional API (pmorie@gmail.com)
+- Merge pull request #4209 from mrunalp/dev/upgrade_endpoints
+  (dmcphers+openshiftbot@redhat.com)
+- Merge pull request #4198 from ncdc/haproxy-keep-proxy-gears-disabled
+  (dmcphers+openshiftbot@redhat.com)
+- bump_minor_versions for sprint 37 (admiller@redhat.com)
+- Keep proxy gears disabled appropriately (andy.goldstein@gmail.com)
+- Migrate endpoints during upgrade. (mrunalp@gmail.com)
+
+* Tue Nov 19 2013 Adam Miller <admiller@redhat.com> 1.17.6-1
+- Fix assertion messages in functional api (pmorie@gmail.com)
+
+* Sun Nov 17 2013 Adam Miller <admiller@redhat.com> 1.17.5-1
+- Make tests using deployment_tester easier to debug (pmorie@gmail.com)
+
 * Wed Nov 13 2013 Adam Miller <admiller@redhat.com> 1.17.4-1
 - Fix bug 1028389 (pmorie@gmail.com)
 - Fix upgrade issues when check_deployments_integrity is called with no options

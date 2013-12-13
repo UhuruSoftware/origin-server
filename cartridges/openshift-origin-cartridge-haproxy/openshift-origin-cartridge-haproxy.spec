@@ -6,7 +6,7 @@
 
 Summary:       Provides HA Proxy
 Name:          openshift-origin-cartridge-haproxy
-Version: 1.17.3
+Version: 1.19.1
 Release:       1%{?dist}
 Group:         Network/Daemons
 License:       ASL 2.0
@@ -46,6 +46,24 @@ HAProxy cartridge for OpenShift. (Cartridge Format V2)
 %doc %{cartridgedir}/LICENSE
 
 %changelog
+* Thu Dec 12 2013 Adam Miller <admiller@redhat.com> 1.19.1-1
+- bump_minor_versions for sprint 38 (admiller@redhat.com)
+
+* Fri Dec 06 2013 Troy Dawson <tdawson@redhat.com> 1.18.2-1
+- Bump up cartridge versions. (mrunalp@gmail.com)
+
+* Wed Dec 04 2013 Adam Miller <admiller@redhat.com> 1.18.1-1
+- Merge pull request #4198 from ncdc/haproxy-keep-proxy-gears-disabled
+  (dmcphers+openshiftbot@redhat.com)
+- bump_minor_versions for sprint 37 (admiller@redhat.com)
+- Keep proxy gears disabled appropriately (andy.goldstein@gmail.com)
+
+* Tue Nov 19 2013 Adam Miller <admiller@redhat.com> 1.17.4-1
+- Merge pull request #4192 from bparees/haproxy-connect-fail
+  (dmcphers+openshiftbot@redhat.com)
+- Bug 1029679: handle connection refused error with clean error message
+  (bparees@redhat.com)
+
 * Thu Nov 14 2013 Adam Miller <admiller@redhat.com> 1.17.3-1
 - Bumping cartridge versions for 2.0.36 (pmorie@gmail.com)
 

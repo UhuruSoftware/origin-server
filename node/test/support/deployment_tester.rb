@@ -53,14 +53,14 @@ class OpenShift::Runtime::DeploymentTester
     if keep_deployments
       # keep up to #{keep} deployments
       logger.info "Setting OPENSHIFT_KEEP_DEPLOYMENTS to #{keep_deployments} for #{@namespace}"
-      @api.add_env_vars(app_name, [{name: 'OPENSHIFT_KEEP_DEPLOYMENTS', value: "#{keep_deployments}"}])
+      @api.configure_application(app_name, keep_deployments: keep_deployments)
 
       gear_env = OpenShift::Runtime::Utils::Environ.for_gear(app_container.container_dir)
 
       assert_equal keep_deployments.to_s, gear_env['OPENSHIFT_KEEP_DEPLOYMENTS'], "Keep deployments value was not actually updated"
     end
 
-    assert_gear_deployment_consistency(@api.gears_for_app(app_name))
+    assert_gear_deployment_consistency(@api.gears_for_app(app_name), keep_deployments)
 
     if scaling
       gear_registry = OpenShift::Runtime::GearRegistry.new(app_container)
@@ -82,7 +82,7 @@ class OpenShift::Runtime::DeploymentTester
       local_hostname = `facter public_hostname`.chomp
       assert_equal local_hostname, entry.proxy_hostname
 
-      @api.assert_http_title_for_entry entry, DEFAULT_TITLE
+      @api.assert_http_title_for_entry entry, DEFAULT_TITLE, "Default title check for head gear failed"
 
       proxy_entries = entries[:proxy]
       assert_equal 1, proxy_entries.keys.size
@@ -97,7 +97,7 @@ class OpenShift::Runtime::DeploymentTester
       # scale up to 2
       @api.assert_scales_to app_name, framework, 2
 
-      assert_gear_deployment_consistency(@api.gears_for_app(app_name))
+      assert_gear_deployment_consistency(@api.gears_for_app(app_name), keep_deployments)
 
       gear_registry.load
       entries = gear_registry.entries
@@ -108,10 +108,10 @@ class OpenShift::Runtime::DeploymentTester
       # make sure the http content is good
       web_entries.values.each do |entry|
         logger.info("Checking title for #{entry.as_json}")
-        @api.assert_http_title_for_entry entry, DEFAULT_TITLE
+        @api.assert_http_title_for_entry entry, DEFAULT_TITLE, "Default title check for secondary gear failed"
       end
     else
-      @api.assert_http_title_for_app app_name, @namespace, DEFAULT_TITLE
+      @api.assert_http_title_for_app app_name, @namespace, DEFAULT_TITLE, "Default title check failed"
     end
 
     deployment_metadata = app_container.deployment_metadata_for(app_container.current_deployment_datetime)
@@ -120,22 +120,22 @@ class OpenShift::Runtime::DeploymentTester
     @api.clone_repo(app_id)
     @api.change_title(CHANGED_TITLE, app_name, app_id, framework)
 
-    assert_gear_deployment_consistency(@api.gears_for_app(app_name))
+    assert_gear_deployment_consistency(@api.gears_for_app(app_name), keep_deployments)
 
     if scaling
-      web_entries.values.each { |entry| @api.assert_http_title_for_entry entry, CHANGED_TITLE }
+      web_entries.values.each { |entry| @api.assert_http_title_for_entry entry, CHANGED_TITLE, "Check for changed title before scale-up failed" }
 
       @api.assert_scales_to app_name, framework, 3
 
-      assert_gear_deployment_consistency(@api.gears_for_app(app_name))
+      assert_gear_deployment_consistency(@api.gears_for_app(app_name), keep_deployments)
 
       gear_registry.load
       entries = gear_registry.entries
       assert_equal 3, entries[:web].size
 
-      entries[:web].values.each { |entry| @api.assert_http_title_for_entry entry, CHANGED_TITLE }
+      entries[:web].values.each { |entry| @api.assert_http_title_for_entry entry, CHANGED_TITLE, "Check for changed title after scale-up failed" }
     else
-      @api.assert_http_title_for_app app_name, @namespace, CHANGED_TITLE
+      @api.assert_http_title_for_app app_name, @namespace, CHANGED_TITLE, "Check for changed title failed"
     end
 
     if add_jenkins
@@ -143,7 +143,7 @@ class OpenShift::Runtime::DeploymentTester
 
       @api.change_title(JENKINS_ADD_TITLE, app_name, app_id, framework)
 
-      assert_gear_deployment_consistency(@api.gears_for_app(app_name))
+      assert_gear_deployment_consistency(@api.gears_for_app(app_name), keep_deployments)
 
       if scaling
         entries = gear_registry.entries
@@ -158,25 +158,30 @@ class OpenShift::Runtime::DeploymentTester
       logger.info("Rolling back to #{deployment_id}")
       logger.info @api.ssh_command(app_id, "gear activate #{deployment_id} --all")
 
-      assert_gear_deployment_consistency(@api.gears_for_app(app_name))
+      assert_gear_deployment_consistency(@api.gears_for_app(app_name), keep_deployments)
 
       if scaling
         entries = gear_registry.entries
-        entries[:web].values.each { |entry| @api.assert_http_title_for_entry entry, DEFAULT_TITLE }
+        entries[:web].values.each { |entry| @api.assert_http_title_for_entry entry, DEFAULT_TITLE, "Default title check after rollback failed" }
       else
-        @api.assert_http_title_for_app app_name, @namespace, DEFAULT_TITLE
+        @api.assert_http_title_for_app app_name, @namespace, DEFAULT_TITLE, "Default title check after rollback failed"
       end
     end
   end
 
-  def assert_gear_deployment_consistency(gears)
+  def assert_gear_deployment_consistency(gears, keep_deployments)
     errors = []
+    deployments_to_keep ||= 1
 
     gears.each do |gear|
       container = OpenShift::Runtime::ApplicationContainer.from_uuid(gear)
       logger.info "Validating deployments for #{gear}"
 
-      container.all_deployments.each do |deployment|
+      all_deployments = container.all_deployments
+
+      assert_operator all_deployments.length, :<=, keep_deployments
+
+      all_deployments.each do |deployment|
         %w(dependencies build-dependencies repo).each do |dir|
           path = File.join(deployment, dir)
           errors << "Broken or missing dir #{path}" unless File.exists?(path)

@@ -10,6 +10,7 @@ https://openshift.redhat.com/community/open-source[OpenShift Origin] is Red Hat'
 == General Overview
 
 * https://openshift.redhat.com/community/wiki/learning-openshift-origin[Learning OpenShift Origin]
+* link:origin_hangouts.html[Origin On-Air Hangouts]
 * link:oo_system_architecture_guide.html[Architecture Overview]
 * link:changelog.html[OpenShift Origin Change Log]
 
@@ -21,7 +22,8 @@ https://openshift.redhat.com/community/open-source[OpenShift Origin] is Red Hat'
 |Admin Guides
 |Developer Guides
 
-a|link:oo_deployment_guide_comprehensive.html[Comprehensive Deployment Guide] +
+a|link:oo_install_users_guide.html[*oo-install* User's Guide] +
+link:oo_deployment_guide_comprehensive.html[Comprehensive Deployment Guide] +
 link:oo_deployment_guide_puppet.html[Puppet Deployment Guide] +
 link:oo_deployment_guide_vm.html[Virtual Machine Deployment Guide] +
 link:oo_client_tools_installation_guide.html[Client Tools Installation Guide]

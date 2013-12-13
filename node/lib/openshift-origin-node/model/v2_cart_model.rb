@@ -332,7 +332,7 @@ module OpenShift
 
         ::OpenShift::Runtime::Utils::Cgroups.new(@container.uuid).boost do
           if empty_repository?
-            output << "CLIENT_MESSAGE: An empty Git repository has been created for your application.  Use 'git push' to add your code."
+            output << "CLIENT_MESSAGE: An empty Git repository has been created for your application.  Use 'git push' to add your code." if cartridge.name == primary_cartridge.name
           else
             output << start_cartridge('start', cartridge, user_initiated: true)
           end
@@ -909,7 +909,7 @@ module OpenShift
         if !address_list.empty? && @container.addresses_bound?(address_list, @hourglass)
           failures = ''
           allocated_endpoints.each do |endpoint|
-            if @container.address_bound?(allocated_ips[endpoint.private_ip_name], endpoint.private_port, @hourglass)
+            if @container.address_bound?(allocated_ips[endpoint.private_ip_name], endpoint.private_port, @hourglass, true)
               failures << "#{endpoint.private_ip_name}(#{endpoint.private_port})=#{allocated_ips[endpoint.private_ip_name]};"
             end
           end
@@ -926,6 +926,16 @@ module OpenShift
         end
 
         logger.info "Deleted private endpoints for #{@container.uuid}/#{cartridge.directory}"
+      end
+
+      def delete_private_endpoint(cartridge, endpoint, remove_private_ip=false)
+        logger.info "Deleting private endpoint #{endpoint.private_ip_name}:#{endpoint.private_port_name} for #{@container.uuid}/#{cartridge.directory}"
+
+        @container.remove_env_var(endpoint.private_ip_name) if remove_private_ip
+        @container.remove_env_var(endpoint.private_port_name)
+        disconnect_frontend_for_endpoint(cartridge, endpoint)
+
+        logger.info "Deleted private endpoint #{endpoint.private_ip_name}:#{endpoint.private_port_name} for #{@container.uuid}/#{cartridge.directory}"
       end
 
       # Finds the next IP address available for binding of the given port for
@@ -975,6 +985,18 @@ module OpenShift
         end
 
         allocated_ips
+      end
+
+      def disconnect_frontend_for_endpoint(cartridge, endpoint)
+        mappings = []
+        endpoint.mappings.each do |mapping|
+          mappings << mapping.frontend
+        end
+
+        logger.info("Disconnecting frontend mapping for #{@container.uuid}/#{cartridge.name}: #{mappings.inspect}")
+        unless mappings.empty?
+          FrontendHttpServer.new(@container).disconnect(*mappings)
+        end
       end
 
       # disconnect cartridge from frontend proxy

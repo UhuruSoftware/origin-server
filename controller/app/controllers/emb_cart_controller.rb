@@ -115,6 +115,12 @@ class EmbCartController < BaseController
         return render_error(:unprocessable_entity, "Invalid cartridge. Valid values are (#{carts.join(', ')})",
                             109, "cartridge")
       end
+      
+      if not Rails.configuration.openshift[:allow_obsolete_cartridges]and cart.is_obsolete?
+        carts = CartridgeCache.cartridge_names("embedded", @application)
+        return render_error(:unprocessable_entity, "Cartridge #{cart.name} is obsolete. Please choose an alternative from this list (#{carts.join(', ')})",
+                            109, "cartridge")
+      end
 
       profs = cart.profile_for_feature(name)
       profile = (profs.is_a? Array) ? profs.first : profs
@@ -142,10 +148,10 @@ class EmbCartController < BaseController
 
     rescue Exception => ex
       # if this was a request to add a url based cart, remove the entry from downloaded_cart_map
-      unless cmap.empty?
-        @application.downloaded_cart_map.delete_if {|k, v| k == cmap.keys[0]}
-        @application.save
-      end
+      # unless cmap.empty?
+      #  @application.downloaded_cart_map.delete_if {|k, v| k == cmap.keys[0]}
+      #  @application.save
+      # end
 
       case ex
       when OpenShift::GearLimitReachedException

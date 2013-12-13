@@ -9,7 +9,7 @@
 
 Summary:       Provides Node.js support
 Name:          openshift-origin-cartridge-nodejs
-Version: 1.18.2
+Version: 1.20.1
 Release:       1%{?dist}
 Group:         Development/Languages
 License:       ASL 2.0
@@ -85,7 +85,37 @@ Provides Node.js support to OpenShift. (Cartridge Format V2)
 %doc %{cartridgedir}/LICENSE
 
 %changelog
-* Fri Nov 15 2013 Vlad Iovanov <vlad.iovanov@uhurusoftware.com> 1.18.2-1
+* Thu Dec 12 2013 Adam Miller <admiller@redhat.com> 1.20.1-1
+- bump_minor_versions for sprint 38 (admiller@redhat.com)
+- Fix bug 1040780: Use supervisor by default (temporary) (pmorie@gmail.com)
+- Reverting #4309 at this caused TypeError: object is not a function
+  (mfojtik@redhat.com)
+- Update server.js template to instanciate with new syntax
+  (ericwilliams76@gmail.com)
+
+* Fri Dec 06 2013 Troy Dawson <tdawson@redhat.com> 1.19.2-1
+- Bump up cartridge versions. (mrunalp@gmail.com)
+
+* Wed Dec 04 2013 Adam Miller <admiller@redhat.com> 1.19.1-1
+- Fix for bug 1034596 remove links that point to openshift.redhat.com
+  (sgoodwin@redhat.com)
+- Remove Open Sans since we're not including it externally,     make font stack
+  consistent with our site,     set line-height (sgoodwin@redhat.com)
+- Merge pull request #4233 from sg00dwin/app-start
+  (dmcphers+openshiftbot@redhat.com)
+- Revisions to new app welcome pages. (sgoodwin@redhat.com)
+- Fix bug 1033700 (pmorie@gmail.com)
+- Merge pull request #4217 from pmorie/bugs/1010464
+  (dmcphers+openshiftbot@redhat.com)
+- bump_minor_versions for sprint 37 (admiller@redhat.com)
+- Fix bug 1010464: only use supervisor is hot_deploy is enabled
+  (pmorie@gmail.com)
+
+* Tue Nov 19 2013 Adam Miller <admiller@redhat.com> 1.18.3-1
+- Bug 1031509 - Fixed typo in node.js cartridge package.json
+  (mfojtik@redhat.com)
+
+* Sun Nov 17 2013 Adam Miller <admiller@redhat.com> 1.18.2-1
 - add dependency + correct url (lh@mikanda.de)
 
 * Thu Nov 07 2013 Adam Miller <admiller@redhat.com> 1.18.1-1

@@ -128,6 +128,34 @@ module OpenShift
           @cartridge_model.unsubscribe(cart_name, pub_cart_name)
         end
 
+        def generate_endpoint_creation_notification_msg(cart, endpoint, private_ip_value, public_port_value)
+          config = ::OpenShift::Config.new
+          endpoint_create_hash = { "cartridge_name" => "#{cart.name}-#{cart.version}",
+                                   "external_address" => config.get('PUBLIC_IP'),
+                                   "external_port" => public_port_value,
+                                   "internal_address" => private_ip_value,
+                                   "internal_port" => endpoint.private_port,
+                                   "protocols" => endpoint.protocols,
+                                   "description" => endpoint.description,
+                                   "type" => []
+          }
+
+          if cart.web_proxy?
+            endpoint_create_hash['protocols'] = @cartridge_model.primary_cartridge.public_endpoints.first.protocols
+            endpoint_create_hash['type'] = ["load_balancer"]
+          elsif cart.web_framework?
+            endpoint_create_hash['type'] = ["web_framework"]
+          elsif cart.categories.include? "database"
+            endpoint_create_hash['type'] = ["database"]
+          elsif cart.categories.include? "plugin"
+            endpoint_create_hash['type'] = ["plugin"]
+          else
+            endpoint_create_hash['type'] = ["other"]
+          end
+          endpoint_create_hash['mappings'] = endpoint.mappings.map { |m| { "frontend" => m.frontend, "backend" => m.backend } } if endpoint.mappings
+          "NOTIFY_ENDPOINT_CREATE: #{endpoint_create_hash.to_json}\n"
+        end
+
         # Creates public endpoints for the given cart. Public proxy mappings are created via
         # the FrontendProxyServer, and the resulting mapped ports are written to environment
         # variables with names based on the cart manifest endpoint entries.
@@ -158,30 +186,7 @@ module OpenShift
             public_port = create_public_endpoint(private_ip, endpoint.private_port)
             add_env_var(endpoint.public_port_name, public_port)
 
-            config = ::OpenShift::Config.new
-            endpoint_create_hash = { "external_address" => config.get('PUBLIC_IP'),
-                                     "external_port" => public_port,
-                                     "internal_address" => private_ip,
-                                     "internal_port" => endpoint.private_port,
-                                     "protocols" => endpoint.protocols,
-                                     "description" => endpoint.description,
-                                     "type" => []
-                                    }
-
-            if cart.web_proxy?
-              endpoint_create_hash['protocols'] = @cartridge_model.primary_cartridge.public_endpoints.first.protocols
-              endpoint_create_hash['type'] = ["load_balancer"]
-            elsif cart.web_framework?
-              endpoint_create_hash['type'] = ["web_framework"]
-            elsif cart.categories.include? "database"
-              endpoint_create_hash['type'] = ["database"]
-            elsif cart.categories.include? "plugin"
-              endpoint_create_hash['type'] = ["plugin"]
-            else
-              endpoint_create_hash['type'] = ["other"]
-            end
-            endpoint_create_hash['mappings'] = endpoint.mappings.map { |m| { "frontend" => m.frontend, "backend" => m.backend } } if endpoint.mappings
-            output << "NOTIFY_ENDPOINT_CREATE: #{endpoint_create_hash.to_json}\n"
+            output << generate_endpoint_creation_notification_msg(cart, endpoint, private_ip, public_port)
 
             logger.info("Created public endpoint for cart #{cart.name} in gear #{@uuid}: "\
           "[#{endpoint.public_port_name}=#{public_port}]")
@@ -230,6 +235,12 @@ module OpenShift
           proxy_mappings.map{|p| remove_env_var(p[:public_port_name])}
 
           output
+        end
+
+        # Delete a particular public endpoint
+        def delete_public_endpoint(public_port_name, public_port_value)
+          @container_plugin.delete_public_endpoint(public_port_value)
+          remove_env_var(public_port_name)
         end
 
         def connector_execute(cart_name, pub_cart_name, connector_type, connector, args)
@@ -363,7 +374,8 @@ module OpenShift
             check_deployments_integrity(options)
             deployment_datetime = create_deployment_dir
 
-            git_ref = options[:ref]
+            gear_env = ::OpenShift::Runtime::Utils::Environ.for_gear(@container_dir)
+            git_ref = determine_deployment_ref(gear_env, options[:ref])
             deployment_metadata = deployment_metadata_for(deployment_datetime)
             deployment_metadata.git_ref = git_ref
             deployment_metadata.hot_deploy = options[:hot_deploy]
@@ -656,7 +668,7 @@ module OpenShift
             deployment_metadata.checksum = calculate_deployment_checksum(deployment_id)
             deployment_metadata.save
 
-            # this is needed so the distribute and activate steps down the line can work
+            # this is needed so the activate step down the line can work
             options[:deployment_id] = deployment_id
 
             out = "Deployment id is #{deployment_id}"
@@ -675,12 +687,8 @@ module OpenShift
         # options: hash
         #   :out             : an IO to which any stdout should be written (default: nil)
         #   :err             : an IO to which any stderr should be written (default: nil)
-        #   :deployment_id   : previously built/prepared deployment
         #
         def distribute(options={})
-          deployment_id = options[:deployment_id]
-          raise ArgumentError.new("deployment_id must be supplied") unless deployment_id
-
           result = { status: RESULT_SUCCESS, gear_results: {}}
 
           # initial build - don't do anything because we don't have a gear registry yet
@@ -693,12 +701,10 @@ module OpenShift
 
           options[:out].puts "Distributing deployment to child gears" if options[:out]
 
-          deployment_datetime = get_deployment_datetime_for_deployment_id(deployment_id)
-          deployment_dir = PathUtils.join(@container_dir, 'app-deployments', deployment_datetime)
           gear_env = ::OpenShift::Runtime::Utils::Environ.for_gear(@container_dir)
 
           gear_results = Parallel.map(gears, :in_threads => MAX_THREADS) do |gear|
-            gear_result = distribute_to_gear(gear, gear_env, deployment_dir, deployment_datetime, deployment_id)
+            gear_result = distribute_to_gear(gear, gear_env)
           end
 
           gear_results.each do |gear_result|
@@ -709,7 +715,7 @@ module OpenShift
           result
         end
 
-        def distribute_to_gear(gear, gear_env, deployment_dir, deployment_datetime, deployment_id)
+        def distribute_to_gear(gear, gear_env)
           result = {
             gear_uuid: gear.split('@')[0],
             status: RESULT_FAILURE,
@@ -719,7 +725,7 @@ module OpenShift
 
           3.times do
             begin
-              result = attempt_distribute_to_gear(gear, gear_env, deployment_dir, deployment_datetime, deployment_id)
+              result = attempt_distribute_to_gear(gear, gear_env)
             rescue ::OpenShift::Runtime::Utils::ShellExecutionException => e
               next
             end
@@ -730,7 +736,7 @@ module OpenShift
           result
         end
 
-        def attempt_distribute_to_gear(gear, gear_env, deployment_dir, deployment_datetime, deployment_id)
+        def attempt_distribute_to_gear(gear, gear_env)
           result = {
             gear_uuid: gear.split('@')[0],
             status: RESULT_FAILURE,
@@ -738,21 +744,15 @@ module OpenShift
             errors: []
           }
 
-          out, err, rc = run_in_container_context("rsync -avz --rsh=/usr/bin/oo-ssh ./ #{gear}:app-deployments/#{deployment_datetime}/",
+          deployments_dir = PathUtils.join(@container_dir, 'app-deployments')
+          out, err, rc = run_in_container_context("rsync -avz --rsh=/usr/bin/oo-ssh --delete-before --exclude=current ./ #{gear}:app-deployments/",
                                                   env: gear_env,
-                                                  chdir: deployment_dir)
+                                                  chdir: deployments_dir)
 
           result[:messages] += out.split("\n") if out
           result[:errors] += err.split("\n") if err
           return result unless rc == 0
 
-          # create by-id symlink
-          out, err, rc = run_in_container_context("rsync -avz --rsh=/usr/bin/oo-ssh #{deployment_id} #{gear}:app-deployments/by-id/#{deployment_id}",
-                                                  env: gear_env,
-                                                  chdir: PathUtils.join(@container_dir, 'app-deployments', 'by-id'))
-
-          result[:messages] += out.split("\n") if out
-          result[:errors] += err.split("\n") if err
           result[:status] = RESULT_SUCCESS if rc == 0
 
           result
@@ -790,7 +790,7 @@ module OpenShift
           options[:hot_deploy] = deployment_metadata.hot_deploy
 
           # if it's a new gear via scale-up, force hot_deploy to false
-          options[:hot_deploy] = false if options[:post_install]
+          options[:hot_deploy] = false if options[:post_install] || options[:restore]
 
           parallel_results = with_gear_rotation(options) do |target_gear, local_gear_env, options|
             target_gear_uuid = target_gear.is_a?(String) ? target_gear : target_gear.uuid

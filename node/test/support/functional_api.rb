@@ -91,6 +91,12 @@ class FunctionalApi
     app_id
   end
 
+  def configure_application(app_name, options)
+    logger.info("Configuring application #{app_name} with config options #{options}")
+    response = RestClient.put("#{@url_base}/domain/#{@namespace}/application/#{app_name}", options, accept: :json)
+    assert_operator 300, :>, response.code, "Invalid response received: #{response}"
+  end
+
   def clone_repo(app_id)
     Dir.chdir(@tmp_dir) do
       response = RestClient.get("#{@url_base}/applications/#{app_id}", accept: :json)
@@ -190,11 +196,6 @@ EOFZ
     logger.info `oo-admin-ctl-user -l #{@login} --allowha true`
   end
 
-  def set_deployment_type(app_name, type)
-    logger.info "Setting deployment type for #{app_name} to #{type}"
-    add_env_vars(app_name, [ { name: 'OPENSHIFT_DEPLOYMENT_TYPE', value: type }])
-  end
-
   def make_ha(app_name)
     begin
       response = RestClient::Request.execute(method: :post,
@@ -209,14 +210,14 @@ EOFZ
     assert_operator 300, :>, response.code, "Invalid response received: #{response}"
   end
 
-  def assert_http_title(url, expected)
+  def assert_http_title(url, expected, msg = nil, max_tries = 3)
     logger.info("Checking #{url} for title '#{expected}'")
     uri = URI.parse(url)
 
-    tries = 1
+    tries = 0
     title = ''
 
-    while tries < 3
+    while tries < max_tries
       tries += 1
       content = ''
 
@@ -242,17 +243,17 @@ EOFZ
       break
     end
 
-    assert_equal expected, title
+    assert_equal expected, title, msg
   end
 
-  def assert_http_title_for_entry(entry, expected)
+  def assert_http_title_for_entry(entry, expected, msg = nil, tries = 3)
     url = "http://#{entry.dns}:#{entry.proxy_port}/"
-    assert_http_title(url, expected)
+    assert_http_title(url, expected, msg, tries)
   end
 
-  def assert_http_title_for_app(app_name, namespace, expected)
+  def assert_http_title_for_app(app_name, namespace, expected, msg = nil, tries = 3)
     url = "http://#{app_name}-#{namespace}.#{cloud_domain}"
-    assert_http_title(url, expected)
+    assert_http_title(url, expected, msg, tries)
   end
 
   def assert_scales_to(app_name, cartridge, count)
@@ -316,7 +317,7 @@ EOFZ
     response = JSON.parse(response)
 
     logger.info("Got Response(#{response})")
-    
+
     logger.info("Done Deploy Binary Artifact Using REST API")
 
   end
@@ -329,5 +330,44 @@ EOFZ
 
   def cloud_domain
     ::OpenShift::Config.new.get('CLOUD_DOMAIN')
+  end
+
+  def assert_gear_status_in_proxy(proxy, target_gear, status)
+    proxy_status_csv = `curl "http://#{proxy.dns}/haproxy-status/;csv" 2>/dev/null`
+
+    if proxy.uuid == target_gear.uuid
+      name = 'local-gear'
+    else
+      gear_name = target_gear.dns.split('-')[0]
+      name = "gear-#{gear_name}-#{target_gear.namespace}"
+    end
+
+    passed = false
+    proxy_status_csv.split("\n").each do |line|
+      if line =~ /#{name}/
+        assert_match /#{status}/, line
+        passed = true
+        break
+      end
+    end
+
+    flunk("Target gear #{name} did not have expected status #{status}") unless passed
+  end
+
+  def restart_cartridge(app_name, cartridge)
+    logger.info("Restarting #{cartridge} in #{app_name}")
+
+    begin
+      response = RestClient::Request.execute(method: :post,
+                                             url: "#{@url_base}/domains/#{@namespace}/applications/#{app_name}/cartridges/#{cartridge}/events",
+                                             payload: JSON.dump(event: 'restart'),
+                                             headers: {content_type: :json, accept: :json},
+                                             timeout: 180)
+    rescue RestClient::Exception => e
+      raise "Exception restarting: #{e.response}"
+    end
+
+    response = JSON.parse(response)
+    assert_equal 'ok', response['status']
   end
 end

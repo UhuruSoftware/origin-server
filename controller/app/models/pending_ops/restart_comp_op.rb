@@ -1,8 +1,6 @@
 class RestartCompOp < PendingAppOp
 
   field :comp_spec, type: Hash, default: {}
-
-  field :group_instance_id, type: String
   field :gear_id, type: String
 
   def isParallelExecutable()
@@ -19,4 +17,7 @@ class RestartCompOp < PendingAppOp
     end
   end
 
+  def action_message
+    "A gear restart did not complete"
+  end
 end

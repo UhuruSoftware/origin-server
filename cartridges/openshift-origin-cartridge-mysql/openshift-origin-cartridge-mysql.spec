@@ -2,7 +2,7 @@
 
 Summary:       Provides embedded mysql support
 Name:          openshift-origin-cartridge-mysql
-Version: 1.18.2
+Version: 1.19.2
 Release:       1%{?dist}
 Group:         Network/Daemons
 License:       ASL 2.0
@@ -11,6 +11,13 @@ Source0:       http://mirror.openshift.com/pub/openshift-origin/source/%{name}/%
 Requires:      mysql-server
 Requires:      mysql-devel
 Requires:      mysql-connector-java
+
+# For RHEL6 install mysql55 from SCL
+%if 0%{?rhel}
+Requires:      mysql55
+Requires:      mysql55-mysql-devel
+%endif
+
 Requires:      rubygem(openshift-origin-node)
 Requires:      openshift-origin-node-util
 BuildArch:     noarch
@@ -30,6 +37,20 @@ Provides mysql cartridge support to OpenShift. (Cartridge Format V2)
 %__mkdir -p %{buildroot}%{cartridgedir}
 %__cp -r * %{buildroot}%{cartridgedir}
 
+%if 0%{?fedora}%{?rhel} <= 6
+%__mv %{buildroot}%{cartridgedir}/metadata/manifest.yml.rhel %{buildroot}%{cartridgedir}/metadata/manifest.yml
+%__mv %{buildroot}%{cartridgedir}/lib/mysql_context.rhel %{buildroot}%{cartridgedir}/lib/mysql_context
+%endif
+
+%if 0%{?fedora} > 18
+%__mv %{buildroot}%{cartridgedir}/metadata/manifest.yml.fedora %{buildroot}%{cartridgedir}/metadata/manifest.yml
+%__mv %{buildroot}%{cartridgedir}/lib/mysql_context.fedora %{buildroot}%{cartridgedir}/lib/mysql_context
+%endif
+
+# Remove what left
+%__rm %{buildroot}%{cartridgedir}/metadata/manifest.yml.*
+%__rm %{buildroot}%{cartridgedir}/lib/mysql_context.*
+
 %files
 %dir %{cartridgedir}
 %attr(0755,-,-) %{cartridgedir}/bin/
@@ -40,6 +61,16 @@ Provides mysql cartridge support to OpenShift. (Cartridge Format V2)
 %doc %{cartridgedir}/LICENSE
 
 %changelog
+* Thu Dec 12 2013 Adam Miller <admiller@redhat.com> 1.19.2-1
+- Bug 1040065 - Disabled OPENSHIFT_MYSQL_PATH_ELEMENT via SCL
+  (mfojtik@redhat.com)
+- Be more verbose when MySQL fail to start (mfojtik@redhat.com)
+- Card online_cartridge_85 - Add Mysql 5.5 support through SCL
+  (mfojtik@redhat.com)
+
+* Wed Dec 04 2013 Adam Miller <admiller@redhat.com> 1.19.1-1
+- bump_minor_versions for sprint 37 (admiller@redhat.com)
+
 * Thu Nov 14 2013 Adam Miller <admiller@redhat.com> 1.18.2-1
 - Bumping cartridge versions for 2.0.36 (pmorie@gmail.com)
 

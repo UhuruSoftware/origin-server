@@ -239,10 +239,24 @@ class ApplicationControllerTest < ActionController::TestCase
 
     put :update, {"id" => @app_name,
                   "domain_id" => @domain.namespace,
-                  "deployment_branch" => 'abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghiabcdefghi'
-                 }
+                  "deployment_branch" => 'a'*257
+                  }
     assert_response :unprocessable_entity
-  end
+    
+    # See git-check-ref-format man page for rules
+    invalid_values = ["abc.lock", "abc/.xyz", "abc..xyz", "/abc", "abc/", "abc//xyz", "abc.", "abc@{xyz}"]
+    invalid_chars = ["^", "~", ":", "?", "*", "\\", " ", "[", ";"]
+    invalid_chars.each do |invalid_char|
+      invalid_values.push("abc#{invalid_char}xyz")
+    end
+    invalid_values.each do |invalid_value|
+      put :update, {"id" => @app_name,
+                    "domain_id" => @domain.namespace,
+                    "deployment_branch" => invalid_value
+                   }
+      assert_response :unprocessable_entity, "Expected value ref:#{invalid_value} to be rejected"
+    end
+  end    
 
   test "get application in all version" do
     @app_name = "app#{@random}"
@@ -256,4 +270,38 @@ class ApplicationControllerTest < ActionController::TestCase
       assert_response :ok, "Getting application for version #{version} failed"
     end
   end
+  
+  test "attempt to create an application with obsolete cartridge" do
+    
+    carts = []
+    cart = OpenShift::Cartridge.new
+    cart.cartridge_vendor = "redhat"
+    cart.name = "ruby-1.8"
+    cart.provides = ["ruby"]
+    cart.version = "1.8"
+    cart.obsolete = true
+    
+    carts << cart
+    cart = OpenShift::Cartridge.new
+    cart.cartridge_vendor = "redhat"
+    cart.name = "ruby-1.9"
+    cart.provides = ["ruby"]
+    cart.version = "1.9"
+    carts << cart
+    
+    cart = OpenShift::Cartridge.new
+    cart.cartridge_vendor = "other"
+    cart.name = "ruby-1.10"
+    cart.provides = ["ruby"]
+    cart.version = "1.10"
+    carts << cart
+    CartridgeCache.stubs(:get_all_cartridges).returns(carts)  
+    
+    @app_name = "app#{@random}"
+    post :create, {"name" => @app_name, "cartridge" => "ruby-1.8", "domain_id" => @domain.namespace}
+    assert_response :unprocessable_entity
+    
+    CartridgeCache.unstub(:get_all_cartridges)
+  end
+  
 end

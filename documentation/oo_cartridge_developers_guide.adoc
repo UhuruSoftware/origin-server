@@ -74,12 +74,14 @@ An example `manifest.yml` file:
 Name: PHP
 Cartridge-Short-Name: PHP
 Cartridge-Version: '1.0.1'
-Compatible-Versions: ['1.0.1']
+Compatible-Versions: 
+  - '1.0.1'
 Cartridge-Vendor: redhat
 Display-Name: PHP 5.3
 Description: "PHP is a general-purpose server-side scripting language..."
 Version: '5.3'
-Versions: ['5.3']
+Versions: 
+  - '5.3'
 License: "The PHP License, version 3.0"
 License-Url: http://www.php.net/license/3_0.txt
 Vendor: PHP Group
@@ -97,7 +99,6 @@ Cart-Data:
 Provides:
   - php-5.3
   - "php"
-  - "php(version) = 5.3.2"
 Publishes:
   get-php-ini:
     Type: "FILESYSTEM:php-ini"
@@ -203,7 +204,7 @@ Versions: ['5.3']
 * domain_scope
 
 ===== Web Framework Category
-The `web_framework` category is used to describe a primary cartridge that accepts inbound HTTP and HTTPS as well as WebSocket requests.  An application can have a single cartridge with the `web_framework` category.  Lastly, when using a `web_framework` category, SSL termination occurs at the platform layer, before the cartridge interaction takes place and the original inbound protocol is passed using the `X-Forwarded-Proto` header to the cartridge.  An application can have a single cartridge with the `web_framework` category.
+The `web_framework` category is used to describe a primary cartridge that accepts inbound HTTP and HTTPS as well as WebSocket requests.  An application can have a single cartridge with the `web_framework` category.  Lastly, when using a `web_framework` category, SSL termination occurs at the platform layer, before the cartridge interaction takes place and the original inbound protocol is passed using the `X-Forwarded-Proto` header to the cartridge.
 
 ===== Web Proxy Category
 The `web_proxy` category is used to describe a cartridge that is responsible for routing web traffic to the application's gears.  If a scalable application is created with a cartridge that has the `web_framework` category, a `web_proxy` cartridge is also added to it to enable auto-scaling.  Subsequently, whenever the `web_framework` cartridge needs to scale beyond a single gear, the `web_proxy` cartridge will automatically route to the end point described by the `Public-Port-Name` with a value of `PROXY_PORT`.  The `web_proxy` will also be automatically updated with routing rules to address the new gears over HTTP as they are added.  An application can have a single cartridge with the `web_proxy` category.     
@@ -253,6 +254,22 @@ Group-Overrides:
 This section defines the scaling parameters for a cartridge and is applicable when the cartridge is added to a scalable application.  The `Min` and `Max` parameters define the scaling limits for the cartridge.  Setting both the `Min` and `Max` equal to 1 indicates that the cartridge cannot scale.  On the other hand, if `Max` is specified as -1, then there is no maximum scaling limit and the cartridge can scale up as long as the user's gear limit is not exceeded.  The scaling limits are enforced during auto-scaling as well as when setting the cartridge scaling limits manually. 
 
 When using `Group-Overrides` to co-locate two or more cartridges that can all scale, it is important to ensure that their scaling limits match.  There are occasions, however, when this is not desirable, such as in the case of a `web_proxy` that is co-located with the `web_framework`.  In this case it doesn't make sense to have the `web_proxy` cartridge be present on every gear where the `web_framework` gear is located.  The `Multiplier` parameter enables this by allowing the cartridge to be placed on fewer gears within the group instance.  For example, if the `Multiplier` is set to 3, then every third gear within the group instance will have the cartridge installed.  Similarly, if the `Multiplier` is set to 1, then all gears within the group instance will have the cartridge installed on them.
+
+
+=== Provides
+`Provides` is a list of *features* or *functionalities* that the cartridge provides to the application.  For example, the php-5.3 cartridge provides *php-5.3* as well as, more generically, *php*. 
+
+----
+Provides: 
+  - php-5.3
+  - php
+----
+
+
+=== Requires
+`Requires` is a list of *features* or *functionalities* that this cartridge depends upon for its operation.  These dependencies would be matched against other available cartridges to find the ones that *provide* them.  For example, a *framework* cartridge like *Rails* could require a *language/runtime* cartridge like *Ruby*.  In this case, if an application is being created with the *Rails* cartridge, based on the `Requires` specification, a cartridge that provides *Ruby* would be automatically added to the application.  
+
+The functionality specified in the `Requires` section must identify a single cartridge.  In case multiple cartridges are matched, then the cartridge cannot be added and an error is raised to the user. 
 
 
 === Source-Url
@@ -727,7 +744,7 @@ Synopsis:: `teardown`
 Options:: _None_
 
 Description::
-The `teardown` script prepares the gear for the cartridge to be removed. This script will not called when the gear is destroyed. The `teardown` script is only run when a cartridge is to be removed from the gear. The gear is expected to continue to operate minus the functionality of your cartridge cartridge.
+The `teardown` script prepares the gear for the cartridge to be removed. This script will not be called when the gear is destroyed. The `teardown` script is only run when a cartridge is to be removed from the gear. The gear is expected to continue to operate minus the functionality of your cartridge cartridge.
 
 Lock Context:: `unlocked`
 
@@ -892,8 +909,7 @@ With the exception of `OPENSHIFT_SECRET_TOKEN`, these variables may not be overr
 |The directory where the developer's application is "archived" to and will be run from
 
 |OPENSHIFT_SECRET_TOKEN
-|A unique 128 character string that is unique to your application that may be used for authentication: joining clusters
-|initial passwords, etc. This variable may be overridden using `rhc set-env`.
+|A unique 128 character string that is unique to your application that may be used for authentication: joining clusters, initial passwords, etc. This variable may be overridden using `rhc set-env`.
 
 |OPENSHIFT_TMP_DIR
 |The directory where your cartridge may store temporary data
@@ -1003,7 +1019,7 @@ Suppose the fictitious "AwesomeSQL" cartridge publishes environment variables wi
 [source,yaml]
 Publishes:   publish-awesomesql-connection-info:     Type: "ENV:NET_TCP:db:awesomesql"
 
-The cooresponding subscription event would be written thus:
+The corresponding subscription event would be written thus:
 
 [source,yaml]
 Subscribes:   set-awesomesql-connection-info:     Type: "ENV:NET_TCP:db:awesomesql"
@@ -1037,13 +1053,13 @@ OPENSHIFT_MYSQL_DB_PORT=port;
 OPENSHIFT_MYSQL_DB_URL=url;
 ----
 
-This would be fed as input to `hooks/publish-mysql-connection-info` in the PHP cartridge, as follows:
+This would be fed as input to `hooks/set-mysql-connection-info` in the PHP cartridge, as follows:
 
 ----
-hooks/publish-mysql-connection-info gear_name namespace gear_uuid 'OPENSHIFT_MYSQL_DB_USERNAME=username;OPENSHIFT_MYSQL_DB_PASSWORD=password;OPENSHIFT_MYSQL_DB_HOST=hostname;OPENSHIFT_MYSQL_DB_PORT=port;OPENSHIFT_MYSQL_DB_URL=url;'
+hooks/set-mysql-connection-info gear_name namespace gear_uuid 'OPENSHIFT_MYSQL_DB_USERNAME=username;OPENSHIFT_MYSQL_DB_PASSWORD=password;OPENSHIFT_MYSQL_DB_HOST=hostname;OPENSHIFT_MYSQL_DB_PORT=port;OPENSHIFT_MYSQL_DB_URL=url;'
 ----
 
-The `publish-mysql-connection-info` is responsible for being capable of parsing the final argument and extracting the values provided.
+The `set-mysql-connection-info` is responsible for being capable of parsing the final argument and extracting the values provided.
 
 == Backing Up and Restoring Your Cartridge
 OpenShift provides a snapshot/restore feature for user applications. This feature is meant to allow OpenShift application developers to:

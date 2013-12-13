@@ -71,6 +71,7 @@ BuildRequires: %{?scl:%scl_prefix}rubygem-jquery-rails
 BuildRequires: %{?scl:%scl_prefix}rubygem-uglifier
 
 %if 0%{?fedora} >= 19
+BuildRequires: systemd
 BuildRequires: ruby(release)
 %else
 BuildRequires: %{?scl:%scl_prefix}ruby(abi) >= %{rubyabi}
@@ -199,10 +200,6 @@ fi
 %{openshiftconfigdir}
 %attr(0750,-,-) %{_var}/log/openshift/console
 %attr(0750,-,-) %{_var}/log/openshift/console/httpd
-%attr(0644,-,-) %ghost %{_var}/log/openshift/console/production.log
-%attr(0644,-,-) %ghost %{_var}/log/openshift/console/development.log
-%attr(0644,-,-) %ghost %{_var}/log/openshift/console/httpd/error_log
-%attr(0644,-,-) %ghost %{_var}/log/openshift/console/httpd/access_log
 %attr(0750,-,-) %{consoledir}/script
 %attr(0750,-,-) %{consoledir}/tmp
 %attr(0750,-,-) %{consoledir}/tmp/cache
