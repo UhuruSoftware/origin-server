@@ -1675,7 +1675,7 @@ class Application
         app_dns_gear_id = gear_id.to_s
       end
 
-      is_windows_group = change[:added].any? do |comp_spec|
+      is_windows_group = comp_specs.any? do |comp_spec|
         cats = CartridgeCache.find_cartridge(comp_spec["cart"], self).categories
         cats.include?("windows")
       end
