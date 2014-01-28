@@ -2954,6 +2954,7 @@ module OpenShift
       # * If gear_exists_in_district is true, then required_uid cannot be set and has to be nil
       # * If gear_exists_in_district is true, then district_uuid must be passed and cannot be nil
       #
+      # TODO: vladi (uhuru): modify method so it uses a platform fact, not kernel
       def self.rpc_find_available(node_profile=nil, district_uuid=nil, least_preferred_server_identities=nil, force_rediscovery=false, gear_exists_in_district=false, required_uid=nil, kernel='Linux')
 
         district_uuid = nil if district_uuid == 'NONE'
@@ -3094,6 +3095,7 @@ module OpenShift
       # * Query facters from every node and filter on server side
       # * uses MCollective::RPC::Client
       #
+      # TODO: vladi (uhuru): modify method so it uses a platform fact, not kernel
       def self.rpc_find_one(node_profile=nil, kernel='Linux')
         current_server = nil
         additional_filters = []

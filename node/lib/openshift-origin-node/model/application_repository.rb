@@ -88,6 +88,14 @@ module OpenShift
         ]
 
         template = locations.find {|l| File.directory?(l)}
+
+        # TODO: vladi (uhuru): HAProxy's git repo template should be scp'd from a Windows gear
+        unless template
+          FileUtils.mkdir_p locations[0]
+          File.open("#{locations[0]}/index.html", 'w') { |file| file.write("<b>Welcome to your new OpenShift app!</b>") }
+          template = locations.find {|l| File.directory?(l)}
+        end
+
         logger.debug("Using '#{template}' to populate git repository for #{@container.uuid}")
         return nil unless template
 

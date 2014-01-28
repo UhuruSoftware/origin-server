@@ -234,6 +234,7 @@ class CartridgeCache
   # Returns an Array of all cartridge objects
   def self.get_all_cartridges
     CacheHelper.get_cached("all_cartridges", :expires_in => 21600.seconds) do
+      # TODO: vladi (uhuru): modify method so it uses the broker conf list of available platforms
       carts_linux = []
       carts_windows = []
 

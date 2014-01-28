@@ -178,6 +178,8 @@ module OpenShift
         @container_name = container.name
         @namespace = container.namespace
 
+        @sole_web_proxy = container.cartridge_model.sole_web_proxy?
+
         if (container.name.to_s == "") or (container.namespace.to_s == "")
           self.class.plugins.each do |pl|
             begin
@@ -321,9 +323,10 @@ module OpenShift
       def connect(*elements)
         elems = elements.flatten.enum_for(:each_slice, 3).map { |path, uri, options| [path, uri, options] }
 
+        # TODO: vladi (uhuru): Make sure this change is OK
         paths_to_update = {}
         elems.each do |path, uri, options|
-          if options["target_update"]
+          if options["target_update"] && !@sole_web_proxy
             paths_to_update[path]=uri
           end
         end
