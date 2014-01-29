@@ -746,7 +746,8 @@ module OpenShift
           }
 
           deployments_dir = PathUtils.join(@container_dir, 'app-deployments')
-          out, err, rc = run_in_container_context("rsync -avz --rsh=/usr/bin/oo-ssh --delete-before --exclude=current ./ #{gear}:app-deployments/",
+          # TODO: vladi (uhuru): Make sure adding the O option is not a problem
+          out, err, rc = run_in_container_context("rsync -avzO --rsh=/usr/bin/oo-ssh --delete-before --exclude=current ./ #{gear}:app-deployments/",
                                                   env: gear_env,
                                                   chdir: deployments_dir)
 
@@ -1357,7 +1358,8 @@ module OpenShift
                 # sync from this gear (load balancer) to all new gears
                 # copy app-deployments and make all the new gears look just like it (i.e., use --delete)
                 ssh_urls.each do |gear|
-                  out, err, rc = run_in_container_context("rsync -avz --delete --rsh=/usr/bin/oo-ssh app-deployments/ #{gear}:app-deployments/",
+                  # TODO: vladi (uhuru): Make sure adding the O option is not a problem
+                  out, err, rc = run_in_container_context("rsync -avzO --delete --rsh=/usr/bin/oo-ssh app-deployments/ #{gear}:app-deployments/",
                                                           env: gear_env,
                                                           chdir: container_dir,
                                                           expected_exitstatus: 0)
@@ -1413,7 +1415,8 @@ module OpenShift
 
         def sync_git_repo(ssh_urls, gear_env)
           Parallel.map(ssh_urls, :in_threads => MAX_THREADS) do |gear|
-            out, err, rc = run_in_container_context("rsync -avz --delete --exclude hooks --rsh=/usr/bin/oo-ssh git/#{application_name}.git/ #{gear}:git/#{application_name}.git/",
+            # TODO: vladi (uhuru): Make sure adding the O option is not a problem
+            out, err, rc = run_in_container_context("rsync -avzO --delete --exclude hooks --rsh=/usr/bin/oo-ssh git/#{application_name}.git/ #{gear}:git/#{application_name}.git/",
                                                     env: gear_env,
                                                     chdir: container_dir,
                                                     expected_exitstatus: 0)
