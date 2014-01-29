@@ -70,7 +70,7 @@ module OpenShift
               raise ::OpenShift::Runtime::Utils::Sdk.translate_out_for_client(message, :error)
             end
           # TODO: vladi (uhuru): Verify that this change is OK
-          elsif cartridge.deployable? or (cartridge.web_proxy? and (primary_cartridge.name == cartridge.name))
+          elsif cartridge.deployable? or @cartridge_model.solo_web_proxy?
             deployment_datetime = latest_deployment_datetime
             deployment_metadata = deployment_metadata_for(deployment_datetime)
 
