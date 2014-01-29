@@ -804,6 +804,9 @@ module OpenShift
             end
           end
 
+          # TODO: vladi (uhuru): Make sure this is ok (if we have a solo proxy, with_gear_rotation will ignore a gear without a web proxy)
+          parallel_results << activate_local_gear(options) if @cartridge_model.solo_web_proxy?
+
           activated_gear_uuids = []
 
           if options[:all] || options[:gears]
