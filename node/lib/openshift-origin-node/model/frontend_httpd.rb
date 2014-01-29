@@ -178,7 +178,7 @@ module OpenShift
         @container_name = container.name
         @namespace = container.namespace
 
-        @sole_web_proxy = container.cartridge_model.sole_web_proxy?
+        @solo_web_proxy = container.cartridge_model.solo_web_proxy?
 
         if (container.name.to_s == "") or (container.namespace.to_s == "")
           self.class.plugins.each do |pl|
@@ -326,7 +326,7 @@ module OpenShift
         # TODO: vladi (uhuru): Make sure this change is OK
         paths_to_update = {}
         elems.each do |path, uri, options|
-          if options["target_update"] && !@sole_web_proxy
+          if options["target_update"] && !@solo_web_proxy
             paths_to_update[path]=uri
           end
         end
