@@ -109,7 +109,7 @@ module OpenShift
       # This occurs in the case of applications that have Windows web cartridges.
       # TODO: vladi (uhuru): verify that these changes are OK
       def solo_web_proxy?
-        web_proxy.name == primary_cartridge.name
+        (web_proxy != nil) and (web_proxy.name == primary_cartridge.name)
       end
 
       ##
