@@ -89,10 +89,8 @@ module OpenShift
 
         template = locations.find {|l| File.directory?(l)}
 
-        # TODO: vladi (uhuru): Verify that this change is OK.
+        # TODO: vladi (uhuru): Verify that this change is OK; also we could rsync directly to template destinatination
         if @container.cartridge_model.solo_web_proxy? and @container.gear_registry.entries[:web]
-          FileUtils.mkdir_p locations.first
-
           remote_web_proxy = @container.gear_registry.entries[:web].values.first
 
           unless remote_web_proxy
@@ -103,7 +101,7 @@ module OpenShift
 
           gear_env = ::OpenShift::Runtime::Utils::Environ::for_gear(@container.container_dir)
 
-          out, err, rc = @container.run_in_container_context("rsync -rOv --delete --rsh=/usr/bin/oo-ssh #{ssh_url}:git/template/ #{locations.first}",
+          out, err, rc = @container.run_in_container_context("mkdir -p #{locations.first} ; rsync -rOv --exclude '.git' --delete --rsh=/usr/bin/oo-ssh #{ssh_url}:git/template/ #{locations.first}",
                                                   env: gear_env,
                                                   chdir: @container.container_dir,
                                                   expected_exitstatus: 0)

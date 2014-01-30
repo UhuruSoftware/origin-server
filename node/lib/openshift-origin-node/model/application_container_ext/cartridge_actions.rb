@@ -1342,30 +1342,30 @@ module OpenShift
             if @cartridge_model.solo_web_proxy?
               @cartridge_model.populate_gear_repo(@cartridge_model.web_proxy.name, nil)
 
-              deployment_datetime = @cartridge_model.latest_deployment_datetime
-              deployment_metadata = @cartridge_model.deployment_metadata_for(deployment_datetime)
+              deployment_datetime = latest_deployment_datetime
+              deployment_metadata = deployment_metadata_for(deployment_datetime)
 
               # only do this if we've never activated
               if deployment_metadata.activations.empty?
-                @cartridge_model.prepare(deployment_datetime: deployment_datetime)
+                prepare(deployment_datetime: deployment_datetime)
 
                 # prepare modifies the deployment metadata - need to reload
                 deployment_metadata.load
 
-                application_repository = ApplicationRepository.new(@cartridge_model)
+                application_repository = ApplicationRepository.new(self)
                 git_ref = 'master'
                 git_sha1 = application_repository.get_sha1(git_ref)
                 deployment_metadata.git_sha1 = git_sha1
                 deployment_metadata.git_ref = git_ref
 
-                deployments_dir = PathUtils.join(@cartridge_model.container_dir, 'app-deployments')
-                @cartridge_model.set_rw_permission_R(deployments_dir)
-                @cartridge_model.reset_permission_R(deployments_dir)
+                deployments_dir = PathUtils.join(@container_dir, 'app-deployments')
+                set_rw_permission_R(deployments_dir)
+                reset_permission_R(deployments_dir)
 
                 deployment_metadata.record_activation
                 deployment_metadata.save
 
-                @cartridge_model.update_current_deployment_datetime_symlink(deployment_datetime)
+                update_current_deployment_datetime_symlink(deployment_datetime)
               end
             end
             # TODO: vladi (uhuru): End of change
