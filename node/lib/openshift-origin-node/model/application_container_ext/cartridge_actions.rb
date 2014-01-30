@@ -1338,6 +1338,11 @@ module OpenShift
             logger.info "Retrieving updated gear registry #{uuid} entries"
             updated_entries = gear_registry.entries
 
+            # TODO: vladi (uhuru): Check if this is ok - need to initialize the solo web proxy git template after we're aware of web gears
+            if @cartridge_model.solo_web_proxy?
+              @cartridge_model.populate_gear_repo(@cartridge_model.web_proxy.name, nil)
+            end
+
             # the broker will inform us if we are supposed to sync and activate new gears
             if sync_new_gears == true
               old_web_gears = old_registry[:web]

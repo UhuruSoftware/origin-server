@@ -89,12 +89,26 @@ module OpenShift
 
         template = locations.find {|l| File.directory?(l)}
 
-        # TODO: vladi (uhuru): HAProxy's git repo template should be scp'd from a Windows gear
-        unless template
-          FileUtils.mkdir_p locations[0]
-          File.open("#{locations[0]}/index.html", 'w') { |file| file.write("<b>Welcome to your new OpenShift app!</b>") }
+        # TODO: vladi (uhuru): Verify that this change is OK.
+        if @container.cartridge_model.solo_web_proxy? and @container.gear_registry.entries[:web]
+          remote_web_proxy = @container.gear_registry.entries[:web].values.first
+
+          unless remote_web_proxy
+            raise RuntimeError.new("Can't find a remote web gear for solo web proxy gear #{@container.uuid}")
+          end
+
+          ssh_url = "#{remote_web_proxy.uuid}@#{remote_web_proxy.proxy_hostname}"
+
+          FileUtils.mkdir_p locations.first
+
+          out, err, rc = run_in_container_context("rsync -rltgoDOv --delete --rsh=/usr/bin/oo-ssh #{gear}:git/template/ #{locations.first}",
+                                                  env: gear_env,
+                                                  chdir: container_dir,
+                                                  expected_exitstatus: 0)
+
           template = locations.find {|l| File.directory?(l)}
         end
+        # TODO: vladi (uhuru): End of change
 
         logger.debug("Using '#{template}' to populate git repository for #{@container.uuid}")
         return nil unless template
