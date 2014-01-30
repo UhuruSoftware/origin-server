@@ -1340,7 +1340,10 @@ module OpenShift
 
             # TODO: vladi (uhuru): Check if this is ok - need to initialize the solo web proxy git template after we're aware of web gears
             if @cartridge_model.solo_web_proxy?
-              @cartridge_model.populate_gear_repo(@cartridge_model.web_proxy.name, nil)
+              remote_web_gear = updated_entries[:web].values.first
+              git_url = "ssh://#{remote_web_gear.uuid}@#{remote_web_gear.proxy_hostname}/~/git/#{application_name}.git"
+
+              @cartridge_model.populate_gear_repo(@cartridge_model.web_proxy.name, git_url)
 
               deployment_datetime = @cartridge_model.latest_deployment_datetime
               deployment_metadata = @cartridge_model.deployment_metadata_for(deployment_datetime)
@@ -1368,6 +1371,7 @@ module OpenShift
                 @cartridge_model.update_current_deployment_datetime_symlink(deployment_datetime)
               end
             end
+            # TODO: vladi (uhuru): End of change
 
             # the broker will inform us if we are supposed to sync and activate new gears
             if sync_new_gears == true
