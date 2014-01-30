@@ -293,7 +293,7 @@ module OpenShift
             end
 
             # TODO: vladi (uhuru): Verify that this change is OK. (TO BE REMOVED)
-            output << populate_gear_repo(c.directory, template_git_url) if cartridge.deployable? #or solo_web_proxy?
+            output << populate_gear_repo(c.directory, template_git_url) if cartridge.deployable?# or solo_web_proxy?
           end
 
           validate_cartridge(cartridge)

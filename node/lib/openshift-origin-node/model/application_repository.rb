@@ -90,21 +90,25 @@ module OpenShift
         template = locations.find {|l| File.directory?(l)}
 
         # TODO: vladi (uhuru): Verify that this change is OK.
-        if @container.cartridge_model.solo_web_proxy? and @container.gear_registry.entries[:web]
-          remote_web_proxy = @container.gear_registry.entries[:web].values.first
-
-          unless remote_web_proxy
-            raise RuntimeError.new("Can't find a remote web gear for solo web proxy gear #{@container.uuid}")
-          end
-
-          ssh_url = "#{remote_web_proxy.uuid}@#{remote_web_proxy.proxy_hostname}"
-
+        if @container.cartridge_model.solo_web_proxy?
           FileUtils.mkdir_p locations.first
+          FileUtils.touch "#{locations.first}/empty"
 
-          out, err, rc = run_in_container_context("rsync -rltgoDOv --delete --rsh=/usr/bin/oo-ssh #{gear}:git/template/ #{locations.first}",
-                                                  env: gear_env,
-                                                  chdir: container_dir,
-                                                  expected_exitstatus: 0)
+          if @container.gear_registry.entries[:web]
+            remote_web_proxy = @container.gear_registry.entries[:web].values.first
+
+            unless remote_web_proxy
+              raise RuntimeError.new("Can't find a remote web gear for solo web proxy gear #{@container.uuid}")
+            end
+
+            ssh_url = "#{remote_web_proxy.uuid}@#{remote_web_proxy.proxy_hostname}"
+
+
+            out, err, rc = run_in_container_context("rsync -rltgoDOv --delete --rsh=/usr/bin/oo-ssh #{gear}:git/template/ #{locations.first}",
+                                                    env: gear_env,
+                                                    chdir: container_dir,
+                                                    expected_exitstatus: 0)
+          end
 
           template = locations.find {|l| File.directory?(l)}
         end
