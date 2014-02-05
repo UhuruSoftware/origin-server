@@ -1920,7 +1920,8 @@ class Application
         next if not add_sparse_cart?(index, sparse_carts_added_count, cartridge, comp_spec, is_scale_up)
         sparse_carts_added_count += 1
         git_url = nil
-        git_url = init_git_url if gear_id == deploy_gear_id && cartridge.is_deployable?
+        # TODO: vladi (uhuru) make sure this change is correct
+        git_url = init_git_url if gear_id == deploy_gear_id && (cartridge.is_deployable? or cartridge.is_web_proxy?)
         add_component_op = AddCompOp.new(gear_id: gear_id, comp_spec: comp_spec, init_git_url: git_url, prereq: new_component_op_id + [prereq_id])
         ops.push add_component_op
         component_ops[comp_spec][:adds].push add_component_op
