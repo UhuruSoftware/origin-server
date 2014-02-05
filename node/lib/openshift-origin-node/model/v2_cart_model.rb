@@ -292,8 +292,8 @@ module OpenShift
                         "Cartridge created the following directories in the gear home directory: #{illegal_entries.join(', ')}")
             end
 
-            # TODO: vladi (uhuru): Verify that this change is OK. (TO BE REMOVED)
-            output << populate_gear_repo(c.directory, template_git_url) if cartridge.deployable?# or solo_web_proxy?
+            # TODO: vladi (uhuru): Verify that this change is OK.
+            output << populate_gear_repo(c.directory, template_git_url) if cartridge.deployable? or (solo_web_proxy? and template_git_url)
           end
 
           validate_cartridge(cartridge)

@@ -1340,7 +1340,12 @@ module OpenShift
 
             # TODO: vladi (uhuru): Check if this is ok - need to initialize the solo web proxy git template after we're aware of web gears
             if @cartridge_model.solo_web_proxy?
-              @cartridge_model.populate_gear_repo(@cartridge_model.web_proxy.name, nil)
+
+              repo = ApplicationRepository.new(self)
+
+              unless repo.exist?
+                @cartridge_model.populate_gear_repo(@cartridge_model.web_proxy.name, nil)
+              end
 
               deployment_datetime = latest_deployment_datetime
               deployment_metadata = deployment_metadata_for(deployment_datetime)
