@@ -2989,7 +2989,7 @@ module OpenShift
                                :operator => "<"},
                               {:fact => "kernel",
                                :value => "(?i:#{kernel})",
-                               :operator => "=="}]
+                               :operator => "=~"}]
 
         if require_specific_district || require_district
           additional_filters.push({:fact => "district_active",
@@ -3102,7 +3102,7 @@ module OpenShift
 
         additional_filters.push({:fact => "kernel",
                                  :value => "(?i:#{kernel})",
-                                 :operator => "=="})
+                                 :operator => "=~"})
 
         if Rails.configuration.msg_broker[:node_profile_enabled]
           if node_profile
