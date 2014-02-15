@@ -20,7 +20,7 @@ module OpenShift
 
     # TODO: vladi (uhuru): modify method so it uses a platform fact, not kernel
     def self.find_available(node_profile=nil, district_uuid=nil, non_ha_server_identities=nil, kernel='Linux')
-      @proxy_provider.find_available_impl(node_profile, district_uuid, non_ha_server_identities, kernel)
+      @proxy_provider.find_available_impl(node_profile, district_uuid, non_ha_server_identities, false, nil, kernel)
     end
 
     # TODO: vladi (uhuru): modify method so it uses a platform fact, not kernel
