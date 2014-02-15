@@ -2123,6 +2123,11 @@ class Application
       additional_filesystem_gb = change[:to_scale][:additional_filesystem_gb] || 0
       add_gears   += ginst_scale if ginst_scale > 0
 
+      is_windows_group = change[:added].any? do |comp_spec|
+        cats = CartridgeCache.find_cartridge(comp_spec["cart"], self).categories
+        cats.include?("windows")
+      end
+
       # TODO: vladi (uhuru): modify method so it uses a platform property, not kernel
       kernel = is_windows_group ? 'Windows' : 'Linux'
       ginst_op = CreateGroupInstanceOp.new({group_instance_id: ginst_id, kernel: kernel})
