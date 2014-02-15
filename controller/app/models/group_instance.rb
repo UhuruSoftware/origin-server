@@ -41,6 +41,7 @@ class GroupInstance
 
     super(attrs, options)
     self._id = custom_id unless custom_id.nil?
+    self.kernel = custom_kernel unless custom_kernel.nil?
   end
 
   def component_instances
