@@ -95,7 +95,7 @@ module OpenShift
       # * Uses rpc_find_one() method
       # TODO: vladi (uhuru): modify method so it uses a platform fact, not kernel
       def self.find_one_impl(node_profile=nil, kernel='Linux')
-        current_server = rpc_find_one(node_profile)
+        current_server = rpc_find_one(node_profile, kernel)
         current_server, capacity, district = rpc_find_available(node_profile, nil, nil, false, false, nil, kernel) unless current_server
 
         raise OpenShift::NodeUnavailableException.new("No nodes available", 140) unless current_server
