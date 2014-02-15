@@ -178,6 +178,7 @@ module OpenShift
         @container_name = container.name
         @namespace = container.namespace
 
+        # TODO: vladi (uhuru): Make sure this change is OK
         @solo_web_proxy = container.cartridge_model.solo_web_proxy?
 
         if (container.name.to_s == "") or (container.namespace.to_s == "")

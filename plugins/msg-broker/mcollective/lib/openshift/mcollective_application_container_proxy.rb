@@ -67,6 +67,7 @@ module OpenShift
       # * If gear_exists_in_district is true, then required_uid cannot be set and has to be nil
       # * If gear_exists_in_district is true, then district_uuid must be passed and cannot be nil
       #
+      # TODO: vladi (uhuru): modify method so it uses a platform fact, not kernel
       def self.find_available_impl(node_profile=nil, district_uuid=nil, least_preferred_server_identities=nil, gear_exists_in_district=false, required_uid=nil, kernel='Linux')
         district = nil
         current_server, current_capacity, preferred_district = rpc_find_available(node_profile, district_uuid, least_preferred_server_identities, false, gear_exists_in_district, required_uid, kernel)
@@ -92,6 +93,7 @@ module OpenShift
       #
       # NOTES:
       # * Uses rpc_find_one() method
+      # TODO: vladi (uhuru): modify method so it uses a platform fact, not kernel
       def self.find_one_impl(node_profile=nil, kernel='Linux')
         current_server = rpc_find_one(node_profile, kernel)
         current_server, capacity, district = rpc_find_available(node_profile, nil, nil, false, false, nil, kernel) unless current_server
@@ -2984,6 +2986,7 @@ module OpenShift
         # First find the most available nodes and match
         # to their districts.  Take out the almost full nodes if possible and return one of
         # the nodes within a district with a lot of space.
+        # TODO: vladi (uhuru): modify method so it uses a platform fact, not kernel
         additional_filters = [{:fact => "active_capacity",
                                :value => '100',
                                :operator => "<"},
@@ -3100,6 +3103,7 @@ module OpenShift
         current_server = nil
         additional_filters = []
 
+        # TODO: vladi (uhuru): modify method so it uses a platform fact, not kernel
         additional_filters.push({:fact => "kernel",
                                  :value => "(?i:#{kernel})",
                                  :operator => "=~"})
