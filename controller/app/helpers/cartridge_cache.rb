@@ -9,8 +9,27 @@ class CartridgeCache
   # Returns an Array of Cartridge objects
   def self.cartridges
     CacheHelper.get_cached("all_cartridges", :expires_in => 21600.seconds) do
-      carts = OpenShift::ApplicationContainerProxy.find_one().get_available_cartridges
-      carts
+      # TODO: vladi (uhuru): modify method so it uses the broker conf list of available platforms
+      carts_linux = []
+      carts_windows = []
+
+      linux_found = true
+
+      begin
+        carts_linux = OpenShift::ApplicationContainerProxy.find_one(nil, 'Linux').get_available_cartridges
+      rescue OpenShift::NodeUnavailableException
+        linux_found = false
+      end
+
+      begin
+        carts_windows = OpenShift::ApplicationContainerProxy.find_one(nil, 'Windows').get_available_cartridges
+      rescue OpenShift::NodeUnavailableException => e
+        unless linux_found
+          raise e
+        end
+      end
+
+      carts_linux + carts_windows
     end
   end
 

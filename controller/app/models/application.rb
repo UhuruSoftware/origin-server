@@ -1346,7 +1346,8 @@ class Application
     old_features = self.requires + [comp_inst.cartridge_name] #[get_feature(comp_inst.cartridge_name, comp_inst.component_name)]
     old_connections, ignore, ignore = elaborate(old_features)
     sub_pub_hash = {}
-    if self.scalable and old_connections
+    # TODO: vladi (uhuru): Remove the is_windows_app condition, since it's no longer required once we force all Windows apps to be scalable
+    if (self.scalable || self.is_windows_app) and old_connections
       old_connections.each do |old_conn|
         if (old_conn["from_comp_inst"]["cart"] == comp_inst.cartridge_name) and
            (old_conn["from_comp_inst"]["comp"] == comp_inst.component_name)
@@ -1359,7 +1360,8 @@ class Application
   end
 
   def execute_connections
-    if self.scalable
+    # TODO: vladi (uhuru): Remove the is_windows_app condition, since it's no longer required once we force all Windows apps to be scalable
+    if (self.scalable || self.is_windows_app)
       connections, new_group_instances, cleaned_group_overrides = elaborate(self.requires, self.group_overrides)
       set_connections(connections)
 
@@ -1629,8 +1631,18 @@ class Application
     end
   end
 
+  # TODO: vladi (uhuru): Do not use the windows category, use the platform attribute
+  def is_windows_app
+    has_windows_component = self.component_instances.any? do |component_instance|
+      component_instance.get_cartridge.categories.include?('windows')
+    end
+
+    has_windows_component
+  end
+
   def update_requirements(features, group_overrides, init_git_url=nil, user_env_vars=nil)
-    group_overrides = (group_overrides + gen_non_scalable_app_overrides(features)).uniq unless self.scalable
+    # TODO: vladi (uhuru): Remove the is_windows_app condition, since it's no longer required once we force all Windows apps to be scalable
+    group_overrides = (group_overrides + gen_non_scalable_app_overrides(features)).uniq unless (self.scalable || self.is_windows_app)
 
     connections, new_group_instances, cleaned_group_overrides = elaborate(features, group_overrides)
     current_group_instances = self.group_instances.map { |gi| gi.to_hash }
@@ -1735,8 +1747,17 @@ class Application
         app_dns_gear_id = gear_id.to_s
       end
 
+      is_windows_group = comp_specs.any? do |comp_spec|
+        cats = CartridgeCache.find_cartridge(comp_spec["cart"], self).categories
+        cats.include?("windows")
+      end
+
+      # TODO: vladi (uhuru): Replace the kernel category with a platform attribute
+
+      kernel = is_windows_group ? 'Windows' : 'Linux'
+
       #init_gear_op = PendingAppOp.new(op_type: :init_gear,   args: {"group_instance_id"=> ginst_id, "gear_id" => gear_id, "host_singletons" => host_singletons, "app_dns" => app_dns}, prereq: maybe_notify_app_create_op)
-      init_gear_op = InitGearOp.new(group_instance_id: ginst_id, gear_id: gear_id, host_singletons: host_singletons, app_dns: app_dns, prereq: maybe_notify_app_create_op)
+      init_gear_op = InitGearOp.new(group_instance_id: ginst_id, kernel: kernel, gear_id: gear_id, host_singletons: host_singletons, app_dns: app_dns, prereq: maybe_notify_app_create_op)
       init_gear_op.prereq = [ginst_op_id] unless ginst_op_id.nil?
 
       #reserve_uid_op = PendingAppOp.new(op_type: :reserve_uid,  args: {"group_instance_id"=> ginst_id, "gear_id" => gear_id}, prereq: [init_gear_op._id.to_s])
@@ -1992,7 +2013,8 @@ class Application
         next if not add_sparse_cart?(group_instance_id, index, sparse_carts_added_count, cartridge, comp_spec, is_scale_up)
         sparse_carts_added_count += 1
         git_url = nil
-        git_url = init_git_url if gear_id == deploy_gear_id && cartridge.is_deployable?
+        # TODO: vladi (uhuru) make sure this change is correct
+        git_url = init_git_url if gear_id == deploy_gear_id && (cartridge.is_deployable? or cartridge.is_web_proxy?)
         #add_component_op = PendingAppOp.new(op_type: :add_component, args: {"group_instance_id"=> group_instance_id, "gear_id" => gear_id, "comp_spec" => comp_spec, "init_git_url" => git_url}, prereq: new_component_op_id + [prereq_id])
         add_component_op = AddCompOp.new(group_instance_id: group_instance_id, gear_id: gear_id, comp_spec: comp_spec, init_git_url: git_url, prereq: new_component_op_id + [prereq_id])
         ops.push add_component_op
@@ -2017,9 +2039,10 @@ class Application
           app_name: self.name, gear_id: gear_id, event: UsageRecord::EVENTS[:begin], cart_name: comp_spec["cart"],
           usage_type: UsageRecord::USAGE_TYPES[:premium_cart], prereq: usage_op_prereq)) if cartridge.is_premium?
 
-       if self.scalable
-        op = ExposePortOp.new(group_instance_id: group_instance_id, gear_id: gear_id, comp_spec: comp_spec, prereq: usage_op_prereq + [prereq_id])
-        component_ops[comp_spec][:expose_ports].push op
+        # TODO: vladi (uhuru): Remove the is_windows_app condition, since it's no longer required once we force all Windows apps to be scalable
+       if (self.scalable || self.is_windows_app)
+          op = ExposePortOp.new(group_instance_id: group_instance_id, gear_id: gear_id, comp_spec: comp_spec, prereq: usage_op_prereq + [prereq_id])
+          component_ops[comp_spec][:expose_ports].push op
         ops.push op
        end
       end
@@ -2100,7 +2123,9 @@ class Application
       additional_filesystem_gb = change[:to_scale][:additional_filesystem_gb] || 0
       add_gears   += ginst_scale if ginst_scale > 0
 
-      ginst_op = CreateGroupInstanceOp.new(group_instance_id: ginst_id)
+      # TODO: vladi (uhuru): modify method so it uses a platform property, not kernel
+      kernel = is_windows_group ? 'Windows' : 'Linux'
+      ginst_op = CreateGroupInstanceOp.new({group_instance_id: ginst_id, kernel: kernel})
       ginst_op.prereq << set_group_override_op._id.to_s unless set_group_override_op.nil?
       pending_ops.push(ginst_op)
       gear_ids = (1..ginst_scale).map {|idx| Moped::BSON::ObjectId.new.to_s}
@@ -2428,7 +2453,17 @@ class Application
       cleaned_override["max_gears"] = group_override["max_gears"] if group_override.has_key?("max_gears")
       cleaned_override["additional_filesystem_gb"] = group_override["additional_filesystem_gb"] if group_override.has_key?("additional_filesystem_gb")
       cleaned_override["gear_size"] = group_override["gear_size"] if group_override.has_key?("gear_size")
-      cleaned_overrides << cleaned_override if group_override["components"] and group_override["components"].count > 0
+
+      # TODO: vladi (uhuru): Replace the kernel category with a platform attribute
+      kernel_map = cleaned_override["components"].map do |comp_spec|
+        cart_name = comp_spec["cart"]
+        comp_cart = CartridgeCache.find_cartridge(cart_name, self)
+        comp_cart.categories.include?('windows')
+      end
+
+      override_ok = (kernel_map.all? { |v| v }) || (kernel_map.all? { |v| !v })
+
+      cleaned_overrides << cleaned_override if group_override["components"] and group_override["components"].count > 0 and override_ok
     end
 
     # work on cleaned_overrides only

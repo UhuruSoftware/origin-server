@@ -73,7 +73,8 @@ class Gear
 
   def reserve_uid(gear_size = nil)
     gear_size = group_instance.gear_size unless gear_size
-    @container = OpenShift::ApplicationContainerProxy.find_available(gear_size, nil, server_identities)
+    # TODO: vladi (uhuru): modify method so it uses a platform property, not kernel
+    @container = OpenShift::ApplicationContainerProxy.find_available(gear_size, nil, server_identities, group_instance.kernel)
     reserved_gear_uid = @container.reserve_uid
 
     failure_message = "Failed to set UID and server_identity for gear #{self.uuid} for application #{self.group_instance.application.name}"

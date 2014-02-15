@@ -67,11 +67,12 @@ module OpenShift
       # * If gear_exists_in_district is true, then required_uid cannot be set and has to be nil
       # * If gear_exists_in_district is true, then district_uuid must be passed and cannot be nil
       #
-      def self.find_available_impl(node_profile=nil, district_uuid=nil, least_preferred_server_identities=nil, gear_exists_in_district=false, required_uid=nil)
+      # TODO: vladi (uhuru): modify method so it uses a platform fact, not kernel
+      def self.find_available_impl(node_profile=nil, district_uuid=nil, least_preferred_server_identities=nil, gear_exists_in_district=false, required_uid=nil, kernel='Linux')
         district = nil
-        current_server, current_capacity, preferred_district = rpc_find_available(node_profile, district_uuid, least_preferred_server_identities, false, gear_exists_in_district, required_uid)
+        current_server, current_capacity, preferred_district = rpc_find_available(node_profile, district_uuid, least_preferred_server_identities, false, gear_exists_in_district, required_uid, kernel)
         if !current_server
-          current_server, current_capacity, preferred_district = rpc_find_available(node_profile, district_uuid, least_preferred_server_identities, true, gear_exists_in_district, required_uid)
+          current_server, current_capacity, preferred_district = rpc_find_available(node_profile, district_uuid, least_preferred_server_identities, true, gear_exists_in_district, required_uid, kernel)
         end
         district = preferred_district if preferred_district
         raise OpenShift::NodeUnavailableException.new("No nodes available", 140) unless current_server
@@ -92,9 +93,10 @@ module OpenShift
       #
       # NOTES:
       # * Uses rpc_find_one() method
-      def self.find_one_impl(node_profile=nil)
+      # TODO: vladi (uhuru): modify method so it uses a platform fact, not kernel
+      def self.find_one_impl(node_profile=nil, kernel='Linux')
         current_server = rpc_find_one(node_profile)
-        current_server, capacity, district = rpc_find_available(node_profile) unless current_server
+        current_server, capacity, district = rpc_find_available(node_profile, nil, nil, false, false, nil, kernel) unless current_server
 
         raise OpenShift::NodeUnavailableException.new("No nodes available", 140) unless current_server
         Rails.logger.debug "DEBUG: find_one_impl: current_server: #{current_server}"
@@ -2962,7 +2964,8 @@ module OpenShift
       # * If gear_exists_in_district is true, then required_uid cannot be set and has to be nil
       # * If gear_exists_in_district is true, then district_uuid must be passed and cannot be nil
       #
-      def self.rpc_find_available(node_profile=nil, district_uuid=nil, least_preferred_server_identities=nil, force_rediscovery=false, gear_exists_in_district=false, required_uid=nil)
+      # TODO: vladi (uhuru): modify method so it uses a platform fact, not kernel
+      def self.rpc_find_available(node_profile=nil, district_uuid=nil, least_preferred_server_identities=nil, force_rediscovery=false, gear_exists_in_district=false, required_uid=nil, kernel='Linux')
 
         district_uuid = nil if district_uuid == 'NONE'
 
@@ -2991,9 +2994,13 @@ module OpenShift
         # First find the most available nodes and match
         # to their districts.  Take out the almost full nodes if possible and return one of
         # the nodes within a district with a lot of space.
+        # TODO: vladi (uhuru): modify method so it uses a platform fact, not kernel
         additional_filters = [{:fact => "active_capacity",
                                :value => '100',
-                               :operator => "<"}]
+                               :operator => "<"},
+                              {:fact => "kernel",
+                               :value => "(?i:#{kernel})",
+                               :operator => "=~"}]
 
         if require_specific_district || require_district
           additional_filters.push({:fact => "district_active",
@@ -3099,9 +3106,15 @@ module OpenShift
       # * Query facters from every node and filter on server side
       # * uses MCollective::RPC::Client
       #
-      def self.rpc_find_one(node_profile=nil)
+      # TODO: vladi (uhuru): modify method so it uses a platform fact, not kernel
+      def self.rpc_find_one(node_profile=nil, kernel='Linux')
         current_server = nil
         additional_filters = []
+
+        # TODO: vladi (uhuru): modify method so it uses a platform fact, not kernel
+        additional_filters.push({:fact => "kernel",
+                                 :value => "(?i:#{kernel})",
+                                 :operator => "=~"})
 
         if Rails.configuration.msg_broker[:node_profile_enabled]
           if node_profile
