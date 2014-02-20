@@ -1153,7 +1153,8 @@ module OpenShift
         env_var_hook = connection_type.start_with?("ENV:") && pub_cart_name
 
         # Special treatment for env var connection hooks
-        if env_var_hook
+        # TODO: vladi (uhuru): make sure this is ok for the web proxy cart
+        if env_var_hook and (web_proxy == nil or solo_web_proxy?)
           set_connection_hook_env_vars(cart_name, pub_cart_name, args)
           args = convert_to_shell_arguments(args)
         end

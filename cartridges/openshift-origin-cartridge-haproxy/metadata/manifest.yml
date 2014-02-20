@@ -29,6 +29,9 @@ Components:
       publish-haproxy-status-url:
         Type: NET_TCP:haproxy-status-info
     Subscribes:
+      # TODO: vladi (uhuru): make sure this is ok for the web proxy cart
+      set-env:
+        Type: ENV:NET_TCP:db:connection-info
       set-db-connection-info:
         Type: NET_TCP:db:connection-info
         Required: false
