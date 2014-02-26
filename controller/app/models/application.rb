@@ -626,6 +626,12 @@ class Application
         end
       end
 
+      # Validate that we are not trying to create a non-scalable Windows app
+      # TODO: vladi (uhuru): make sure this change is OK
+      if cart.categories.include?('windows') && !self.scalable
+        raise OpenShift::UserException.new("Windows applications must be scalable.", 109)
+      end
+
       # Validate that the features support scalable if necessary
       if self.scalable && !(cart.is_plugin? || cart.is_service?)
         if cart.is_web_framework?
