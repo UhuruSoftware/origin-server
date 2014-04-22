@@ -1790,6 +1790,14 @@ module OpenShift
         gear_components = gear.component_instances
         start_order, stop_order = app.calculate_component_orders
         source_container = gear.get_proxy
+
+        case gear.gear_instance.platform.downcase
+          when "windows"
+          log_debug "DEBUG: Resetting user rights"
+          rsync_keyfile = Rails.configuration.auth[:rsync_keyfile]
+          log_debug `eval \`ssh-agent\`; ssh-add #{rsync_keyfile}; ssh -o StrictHostKeyChecking=no -A root@#{destination_container.get_ip_address} "/cygdrive/c/openshift/bin/oo-cmd.exe oo-admin-restore-acls --uuid:#{gear.uuid}"; exit_code=$?; ssh-agent -k;exit $exit_code`
+        end
+
         start_order.each do |cinst|
           next unless gear_components.include? cinst
           cart = cinst.cartridge_name
@@ -2202,28 +2210,54 @@ module OpenShift
         app = gear.application
         reply = ResultIO.new
         source_container = gear.get_proxy
-        log_debug "DEBUG: Creating new account for gear '#{gear.name}' on #{destination_container.id}"
-        sshkey_required = false
-        initial_deployment_dir_required = false
-        reply.append destination_container.create(gear, quota_blocks, quota_files, sshkey_required, initial_deployment_dir_required)
+        platform = gear.group_instance.platform
+        log_debug "DEBUG: Gear platform is '#{platform}'"
 
-        log_debug "DEBUG: Moving content for app '#{app.name}', gear '#{gear.name}' to #{destination_container.id}"
-        rsync_keyfile = Rails.configuration.auth[:rsync_keyfile]
-        log_debug `eval \`ssh-agent\`; ssh-add #{rsync_keyfile}; ssh -o StrictHostKeyChecking=no -A root@#{source_container.get_ip_address} "rsync -aAX -e 'ssh -o StrictHostKeyChecking=no' /var/lib/openshift/#{gear.uuid}/ root@#{destination_container.get_ip_address}:/var/lib/openshift/#{gear.uuid}/"; exit_code=$?; ssh-agent -k; exit $exit_code`
-        if $?.exitstatus != 0
-          raise OpenShift::NodeException.new("Error moving app '#{app.name}', gear '#{gear.name}' from #{source_container.id} to #{destination_container.id}", 143)
+        case platform.downcase
+        when "windows"
+          log_debug "DEBUG: Creating new account for gear '#{gear.name}' on #{destination_container.id}"
+          sshkey_required = false
+          initial_deployment_dir_required = false
+          reply.append destination_container.create(gear, quota_blocks, quota_files, sshkey_required, initial_deployment_dir_required)
+          log_debug "DEBUG: Moving content for app '#{app.name}', gear '#{gear.name}' to #{destination_container.id}"
+          rsync_keyfile = Rails.configuration.auth[:rsync_keyfile]
+          #Rsync arguments had to be changed for windows to move the gear with full rights and reset them correctly in the post move method
+          log_debug `eval \`ssh-agent\`; ssh-add #{rsync_keyfile}; ssh -o StrictHostKeyChecking=no -A root@#{source_container.get_ip_address} "rsync --perms -rltgoD0v --chmod=Du=rwx,Dg=rwx,Do=rwx,Fu=rww,Fg=rwx,Fo=rwx -p --exclude 'profile' -e 'ssh -o StrictHostKeyChecking=no' /var/lib/openshift/#{gear.uuid}/ root@#{destination_container.get_ip_address}:/var/lib/openshift/#{gear.uuid}/"; exit_code=$?; ssh-agent -k;exit $exit_code`
+
+          if $?.exitstatus != 0
+            raise OpenShift::NodeException.new("Error moving app '#{app.name}', platform '#{platform}', gear '#{gear.name}' from #{source_container.id} to #{destination_container.id}", 143)
+          end
+
+          log_debug "DEBUG: Moving system components for app '#{app.name}', gear '#{gear.name}' to #{destination_container.id}"
+          #Rsync arguments changed, preserving extended attributes and ACLs cannot be used on windows
+          log_debug `eval \`ssh-agent\`; ssh-add #{rsync_keyfile}; ssh -o StrictHostKeyChecking=no -A root@#{source_container.get_ip_address} "rsync -rltgoD0v -e 'ssh -o StrictHostKeyChecking=no' --include '.httpd.d/' --include '.httpd.d/#{gear.uuid}_***' --include '#{gear.name}-#{app.domain.namespace}' --include '.last_access/' --include '.last_access/#{gear.uuid}' --exclude '*' /var/lib/openshift/ root@#{destination_container.get_ip_address}:/var/lib/openshift/"; exit_code=$?; ssh-agent -k; exit $exit_code`
+          if $?.exitstatus != 0
+            raise OpenShift::NodeException.new("Error moving system components for app '#{app.name}',platform '#{platform}', gear '#{gear.name}' from #{source_container.id} to #{destination_container.id}", 143)
+          end
+        else
+          log_debug "DEBUG: Creating new account for gear '#{gear.name}' on #{destination_container.id}"
+          sshkey_required = false
+          initial_deployment_dir_required = false
+          reply.append destination_container.create(gear, quota_blocks, quota_files, sshkey_required, initial_deployment_dir_required)
+
+          log_debug "DEBUG: Moving content for app '#{app.name}', gear '#{gear.name}' to #{destination_container.id}"
+          rsync_keyfile = Rails.configuration.auth[:rsync_keyfile]
+          log_debug `eval \`ssh-agent\`; ssh-add #{rsync_keyfile}; ssh -o StrictHostKeyChecking=no -A root@#{source_container.get_ip_address} "rsync -aAX -e 'ssh -o StrictHostKeyChecking=no' /var/lib/openshift/#{gear.uuid}/ root@#{destination_container.get_ip_address}:/var/lib/openshift/#{gear.uuid}/"; exit_code=$?; ssh-agent -k; exit $exit_code`
+          if $?.exitstatus != 0
+            raise OpenShift::NodeException.new("Error moving app '#{app.name}',platform '#{platform}', gear '#{gear.name}' from #{source_container.id} to #{destination_container.id}", 143)
+          end
+
+          log_debug "DEBUG: Moving system components for app '#{app.name}', gear '#{gear.name}' to #{destination_container.id}"
+          log_debug `eval \`ssh-agent\`; ssh-add #{rsync_keyfile}; ssh -o StrictHostKeyChecking=no -A root@#{source_container.get_ip_address} "rsync -aAX -e 'ssh -o StrictHostKeyChecking=no' --include '.httpd.d/' --include '.httpd.d/#{gear.uuid}_***' --include '#{gear.name}-#{app.domain_namespace}' --include '.last_access/' --include '.last_access/#{gear.uuid}' --exclude '*' /var/lib/openshift/ root@#{destination_container.get_ip_address}:/var/lib/openshift/"; exit_code=$?; ssh-agent -k; exit $exit_code`
+          if $?.exitstatus != 0
+            raise OpenShift::NodeException.new("Error moving system components for app '#{app.name}', platform '#{platform}', gear '#{gear.name}' from #{source_container.id} to #{destination_container.id}", 143)
+          end
+
+          # Transfer the front-end configuration to the new gear
+          backup = source_container.frontend_backup(gear)
+          reply.append destination_container.frontend_restore(backup)
         end
-
-        log_debug "DEBUG: Moving system components for app '#{app.name}', gear '#{gear.name}' to #{destination_container.id}"
-        log_debug `eval \`ssh-agent\`; ssh-add #{rsync_keyfile}; ssh -o StrictHostKeyChecking=no -A root@#{source_container.get_ip_address} "rsync -aAX -e 'ssh -o StrictHostKeyChecking=no' --include '.httpd.d/' --include '.httpd.d/#{gear.uuid}_***' --include '#{gear.name}-#{app.domain_namespace}' --include '.last_access/' --include '.last_access/#{gear.uuid}' --exclude '*' /var/lib/openshift/ root@#{destination_container.get_ip_address}:/var/lib/openshift/"; exit_code=$?; ssh-agent -k; exit $exit_code`
-        if $?.exitstatus != 0
-          raise OpenShift::NodeException.new("Error moving system components for app '#{app.name}', gear '#{gear.name}' from #{source_container.id} to #{destination_container.id}", 143)
-        end
-
-        # Transfer the front-end configuration to the new gear
-        backup = source_container.frontend_backup(gear)
-        reply.append destination_container.frontend_restore(backup)
-        reply
+          reply
       end
 
       #
