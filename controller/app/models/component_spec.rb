@@ -3,7 +3,7 @@
 #
 class ComponentSpec
   attr_reader :path, :name, :id, :cartridge_name
-  attr_writer :cartridge, :component, :application
+  attr_writer :cartridge, :component, :application, :default
 
   def self.for_model(component, cartridge, application=nil)
     spec = new(component.name, cartridge.name, cartridge.id)
@@ -44,6 +44,7 @@ class ComponentSpec
     @cartridge_name = cartridge_name
     @id = id
     @path = "#{@cartridge_name}/#{@name}"
+    @default = true
   end
 
   def cartridge(from=nil)
@@ -76,7 +77,7 @@ class ComponentSpec
   end
 
   def default?
-    true
+    @default
   end
 
   def <=>(other)

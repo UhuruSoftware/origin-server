@@ -537,6 +537,8 @@ class Application
           # compact will remove nils from the array, to exclude carts that have not been found
           if platforms.compact.uniq.size == 1
             overrides << o.implicit
+          else
+            spec.default = false
           end
         end
       end
